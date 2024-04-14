@@ -61,10 +61,8 @@ class _module_function(torch.autograd.Function):
     @staticmethod
     def forward(ctx, native_tcnn_module, input, params, info):
         batch_size = input.shape[0]
-        if info["is_in_eval_mode"]:
-            output = native_tcnn_module.inference(input.to(params.dtype))
-        else:
-            output = native_tcnn_module.fwd(input.to(params.dtype))
+
+        output = native_tcnn_module.fwd(input.to(params.dtype))
         output = output.reshape(batch_size, -1).to(input.device)
         ctx.save_for_backward(input, output, params)
         ctx.info = info
@@ -136,7 +134,9 @@ class _module_function(torch.autograd.Function):
 
 
 class Module(torch.nn.Module):
-    def __init__(self, create_params=False, device="xpu", dtype=torch.bfloat16):
+    def __init__(
+        self, create_params=False, init_params=None, device="xpu", dtype=torch.bfloat16
+    ):
         super(Module, self).__init__()
         self.device = device
         self.dtype = dtype
@@ -151,6 +151,12 @@ class Module(torch.nn.Module):
             # Creating the torch.nn.Parameter object with the initialized tensor
             self.params = torch.nn.Parameter(
                 initial_params.to(device), requires_grad=True
+            )
+        elif self.tnn_module.n_params() and init_params is not None:
+            print(f"--> initial_params {init_params = }")
+            initial_params = self.tnn_module.initial_params(init_params.to(self.device))
+            self.params = torch.nn.Parameter(
+                initial_params.to(self.device), requires_grad=True
             )
         elif self.tnn_module.n_params():
             initial_params = self.tnn_module.initial_params()
@@ -276,11 +282,10 @@ class Module(torch.nn.Module):
             padded_tensor = (
                 padded_tensor
                 if input_dim == self.width
-                else torch.nn.functional.pad(
-                    padded_tensor, [0, self.width - input_dim, 0, 0]
-                )
+                else torch.nn.functional.pad(x, [0, self.width - input_dim, 0, 0])
             ).to(dtype=self.dtype)
-        info = {"is_in_eval_mode": not self.training}
+
+        info = {}
 
         if hasattr(self, "n_hidden_layers"):
             # added for NWE and Network
@@ -354,6 +359,7 @@ class NetworkWithInputEncoding(Module):
         n_output_dims=1,
         network_config=None,
         encoding_config=None,
+        init_params=None,
         device="xpu",
         dtype=torch.bfloat16,
     ):
@@ -390,7 +396,7 @@ class NetworkWithInputEncoding(Module):
         if "n_dims_to_encode" not in self.encoding_config:
             self.encoding_config["n_dims_to_encode"] = self.n_input_dims
 
-        super().__init__(device=device, dtype=dtype)
+        super().__init__(init_params=init_params, device=device, dtype=dtype)
 
     def create_module(self):
 

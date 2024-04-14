@@ -1,6 +1,6 @@
 import numpy as np
 
-from mlp import MLP
+from tests.mlp import MLP
 
 from tiny_dpcpp_nn import Network, NetworkWithInputEncoding
 import torch
