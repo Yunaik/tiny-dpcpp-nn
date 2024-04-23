@@ -28,7 +28,7 @@ template <typename T, int WIDTH>
 double benchmark_inference(const size_t batch_size, const int n_hidden_layers, const int n_iterations, sycl::queue &q) {
 
     tinydpcppnn::benchmarks::common::WriteBenchmarkHeader("Inference", batch_size, WIDTH, n_hidden_layers, sizeof(T),
-                                                          type_to_string<T>(), q);
+                                                          type_to_string<T>());
 
     constexpr int input_width = WIDTH;
     constexpr int output_width = WIDTH;
@@ -47,7 +47,7 @@ double benchmark_inference(const size_t batch_size, const int n_hidden_layers, c
     std::vector<T> new_weights(network.get_weights_matrices().nelements(), 1.0 / WIDTH);
     network.set_weights_matrices(new_weights);
 
-    constexpr int n_iterations_warmup = 5;
+    int n_iterations_warmup = n_iterations / 2;
     // Do a warmup loop, not benched.
     for (int iter = 0; iter < n_iterations_warmup; iter++) {
         network.inference(inputs, output, {});

@@ -27,28 +27,28 @@ int main() {
         MPI_Init(NULL, NULL);
         // sycl::queue q(sycl::gpu_selector_v);
 
-        benchmark_inference<bf16, 64>(1 << 22, 4, 1000);
+        benchmark_inference<bf16, 64>(1 << 22, 4, 1000, false);
 
-        benchmark_inference<sycl::half, 64>(1 << 22, 4, 1000);
+        benchmark_inference<sycl::half, 64>(1 << 22, 4, 1000, false);
 
-        benchmark_inference<bf16, 16>(1 << 22, 4, 1000);
+        benchmark_inference<bf16, 16>(1 << 22, 4, 1000, false);
 
-        benchmark_inference<bf16, 32>(1 << 22, 4, 1000);
+        benchmark_inference<bf16, 32>(1 << 22, 4, 1000, false);
 
-        benchmark_inference<bf16, 128>(1 << 22, 4, 1000);
+        benchmark_inference<bf16, 128>(1 << 22, 4, 1000, false);
 
-        benchmark_inference<sycl::half, 128>(1 << 22, 4, 1000);
+        benchmark_inference<sycl::half, 128>(1 << 22, 4, 1000, false);
 
         for (int iter = 16; iter < 25; iter++) {
-            benchmark_inference<bf16, 64>(1 << iter, 4, 100);
+            benchmark_inference<bf16, 64>(1 << iter, 4, 100, false);
         }
 
         for (int iter = 10; iter < 25; iter++) {
-            benchmark_inference<bf16, 16>(1 << iter, 4, 1000);
+            benchmark_inference<bf16, 16>(1 << iter, 4, 1000, false);
         }
 
         for (int iter = 2; iter < 20; iter++) {
-            benchmark_inference<bf16, 64>(1 << 22, iter, 1000);
+            benchmark_inference<bf16, 64>(1 << 22, iter, 1000, false);
         }
         MPI_Finalize();
     } catch (const std::exception &e) {

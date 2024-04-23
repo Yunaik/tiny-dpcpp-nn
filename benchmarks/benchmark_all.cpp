@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <sycl/sycl.hpp>
+#include <algorithm>
 
 #include "benchmark_inference.h"
 #include "benchmark_training.h"
@@ -21,7 +22,6 @@ void benchmark_training_and_inference(const size_t batch_size, const int n_hidde
 
 template <typename T, int WIDTH> void benchmark_all(sycl::queue &q, int test_over_batch_size = 0) {
     int n_hidden_layers = 4;
-    int iterations = 100;
     int batch_size;
     std::vector<tinydpcppnn::benchmarks::common::PerformanceData> perf_data;
 
@@ -40,6 +40,9 @@ template <typename T, int WIDTH> void benchmark_all(sycl::queue &q, int test_ove
         }
         for (int power = 10; power < 22; power++) {
             batch_size = 1 << (power + batch_size_offset);
+
+            int iterations = std::max(1000 * (1 << 18) / batch_size, 250);
+
             benchmark_training_and_inference<T, WIDTH>(batch_size, n_hidden_layers, iterations, q, gflops_training,
                                                        gflops_inference);
 
@@ -50,7 +53,7 @@ template <typename T, int WIDTH> void benchmark_all(sycl::queue &q, int test_ove
 
     else {
 
-        iterations = 1000; // all benchmarks run 1000 iters
+        int iterations = 1000; // all benchmarks run 1000 iters
         n_hidden_layers = 11;
         batch_size =
             1 << (17 + batch_size_offset); // batch size one less, because MPI does 2 tiles, thus half batch size.
@@ -180,6 +183,9 @@ int main() {
 
         std::cout << "Sycl::half, width 64" << std::endl;
         benchmark_all<sycl::half, 64>(q, 1);
+
+        std::cout << "bf16, width 64" << std::endl;
+        benchmark_all<bf16, 64>(q, 1);
 
         // std::cout << "Sycl::half, width 128" << std::endl;
         // benchmark_all<sycl::half, 128>(q, 1);

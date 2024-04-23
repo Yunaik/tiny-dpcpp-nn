@@ -31,7 +31,7 @@ template <typename T, int WIDTH>
 double benchmark_training(const size_t batch_size, const int n_hidden_layers, const int n_iterations, sycl::queue &q) {
 
     tinydpcppnn::benchmarks::common::WriteBenchmarkHeader("Training (forw+backw, no opt, no loss)", batch_size, WIDTH,
-                                                          n_hidden_layers, sizeof(T), type_to_string<T>(), q);
+                                                          n_hidden_layers, sizeof(T), type_to_string<T>());
 
     constexpr int input_width = WIDTH;
     constexpr int output_width = WIDTH;
@@ -56,7 +56,7 @@ double benchmark_training(const size_t batch_size, const int n_hidden_layers, co
 
     Trainer<T> train(&network);
 
-    constexpr int n_iterations_warmup = 5;
+    int n_iterations_warmup = n_iterations / 2;
     // Do a warmup loop, not benched.
     for (int iter = 0; iter < n_iterations_warmup; iter++) {
         train.training_step(inputs, outputs_backw, losses, out_inter_forw, out_inter_backw, {});

@@ -35,8 +35,7 @@ double benchmark_training(const size_t batch_size, const int n_hidden_layers, co
                                          Activation::None);
 
     tinydpcppnn::benchmarks::common::WriteBenchmarkHeader("Training (forw+backw, no opt, no loss)", batch_size, WIDTH,
-                                                          n_hidden_layers, sizeof(T), type_to_string<T>(),
-                                                          network.get_queue());
+                                                          n_hidden_layers, sizeof(T), type_to_string<T>());
 
     torch::Tensor input = torch::ones({(int)batch_size, input_width}).to(torch::kXPU).to(c10::ScalarType::BFloat16);
     torch::Tensor dL_doutput =
@@ -44,7 +43,7 @@ double benchmark_training(const size_t batch_size, const int n_hidden_layers, co
 
     Trainer<T> train(&network, weight_val);
 
-    constexpr int n_iterations_warmup = 5;
+    int n_iterations_warmup = n_iterations / 2;
     // Do a warmup loop, not benched.
     for (int iter = 0; iter < n_iterations_warmup; iter++) {
         train.training_step(input, dL_doutput);

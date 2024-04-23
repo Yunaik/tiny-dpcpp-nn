@@ -16,10 +16,11 @@
 #include "common_benchmarks.h"
 #include "mpi.h"
 #include "tnn_api.h"
+#include "torch_wrapper.h"
 
 /// benchmarking function with input width = width = output width
 template <typename T, int WIDTH>
-double benchmark_inference(const size_t batch_size, const int n_hidden_layers, const int n_iterations) {
+double benchmark_inference(const size_t batch_size, const int n_hidden_layers, const int n_iterations, bool use_torch) {
 
     constexpr int input_width = WIDTH;
     constexpr int output_width = WIDTH;
@@ -27,27 +28,29 @@ double benchmark_inference(const size_t batch_size, const int n_hidden_layers, c
 
     torch::Tensor input = torch::ones({(int)batch_size, input_width}).to(torch::kXPU).to(c10::ScalarType::BFloat16);
 
-    tnn::NetworkModule<T, WIDTH> network(input_width, output_width, n_hidden_layers, Activation::ReLU,
-                                         Activation::None);
+    // Initialize the chosen network type based on the use_torch flag
+    std::unique_ptr<NeuralNetwork> network;
+    if (use_torch) {
+        network = std::make_unique<TorchMLPWrapper>(input_width, output_width, n_hidden_layers);
+    } else {
+        network =
+            std::make_unique<NetworkModuleWrapper<T, WIDTH>>(input_width, output_width, n_hidden_layers, weight_val);
+    }
 
     tinydpcppnn::benchmarks::common::WriteBenchmarkHeader("Inference", batch_size, WIDTH, n_hidden_layers, sizeof(T),
-                                                          type_to_string<T>(), network.get_queue());
+                                                          type_to_string<T>());
 
-    torch::Tensor init_params =
-        torch::ones({(int)network.n_params(), 1}).to(torch::kXPU).to(c10::ScalarType::BFloat16) * weight_val;
-    torch::Tensor params = network.initialize_params(init_params);
-
-    constexpr int n_iterations_warmup = 5;
+    constexpr int n_iterations_warmup = n_iterations / 2;
     torch::Tensor output_net;
     // Do a warmup loop, not benched.
     for (int iter = 0; iter < n_iterations_warmup; iter++) {
-        output_net = network.inference(input);
+        output_net = network->inference(input);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
     const auto begin_time = std::chrono::steady_clock::now();
     for (int iter = 0; iter < n_iterations; iter++) {
-        output_net = network.inference(input);
+        output_net = network->inference(input);
     }
     MPI_Barrier(MPI_COMM_WORLD);
     const auto end_time = std::chrono::steady_clock::now();

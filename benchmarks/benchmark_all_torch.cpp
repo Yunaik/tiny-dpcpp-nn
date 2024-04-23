@@ -1,6 +1,7 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: BSD-3-Clause
 
+#include <algorithm>
 #include <iostream>
 #include <sycl/sycl.hpp>
 
@@ -12,14 +13,13 @@ using bf16 = sycl::ext::oneapi::bfloat16;
 
 template <typename T, int WIDTH>
 void benchmark_training_and_inference(const size_t batch_size, const int n_hidden_layers, const int n_iterations,
-                                      double &gflops_training, double &gflops_inference) {
-    gflops_training = benchmark_training<T, WIDTH>(batch_size, n_hidden_layers, n_iterations);
-    gflops_inference = benchmark_inference<T, WIDTH>(batch_size, n_hidden_layers, n_iterations);
+                                      double &gflops_training, double &gflops_inference, bool use_torch) {
+    // gflops_training = benchmark_training<T, WIDTH>(batch_size, n_hidden_layers, n_iterations, use_torch);
+    gflops_inference = benchmark_inference<T, WIDTH>(batch_size, n_hidden_layers, n_iterations, use_torch);
 }
 
-template <typename T, int WIDTH> void benchmark_all(bool test_over_batch_size = 0) {
+template <typename T, int WIDTH> void benchmark_all(bool test_over_batch_size, bool use_torch) {
     int n_hidden_layers = 4;
-    int iterations = 100;
     int batch_size;
     std::vector<tinydpcppnn::benchmarks::common::PerformanceData> perf_data;
 
@@ -31,15 +31,18 @@ template <typename T, int WIDTH> void benchmark_all(bool test_over_batch_size = 
     int batch_size_offset = 1 - size;
     std::cout << "MPI size: " << size << ", thus batch size on each MPI rank: " << batch_size_offset << std::endl;
     if (test_over_batch_size) {
+
         // benchmark training over all batch_size
         if (world_rank == 0) {
             std::cout << "=========================Benchmark throughput over batch sizes========================="
                       << std::endl;
         }
         for (int power = 10; power < 22; power++) {
+            int iterations = std::max(1000 * (1 << 18) / batch_size, 250);
+
             batch_size = 1 << (power + batch_size_offset);
             benchmark_training_and_inference<T, WIDTH>(batch_size, n_hidden_layers, iterations, gflops_training,
-                                                       gflops_inference);
+                                                       gflops_inference, use_torch);
 
             // Collect the performance data instead of printing it directly
             perf_data.push_back({power, gflops_training, gflops_inference});
@@ -48,7 +51,7 @@ template <typename T, int WIDTH> void benchmark_all(bool test_over_batch_size = 
 
     else {
 
-        iterations = 1000; // all benchmarks run 1000 iters
+        int iterations = 1000; // all benchmarks run 1000 iters
         n_hidden_layers = 11;
         batch_size =
             1 << (17 + batch_size_offset); // batch size one less, because MPI does 2 tiles, thus half batch size.
@@ -58,48 +61,48 @@ template <typename T, int WIDTH> void benchmark_all(bool test_over_batch_size = 
                 << std::endl;
         }
         benchmark_training_and_inference<T, WIDTH>(batch_size, n_hidden_layers, iterations, gflops_training,
-                                                   gflops_inference);
+                                                   gflops_inference, use_torch);
 
         // Collect the performance data instead of printing it directly
         perf_data.push_back({batch_size, gflops_training, gflops_inference});
-        // Image compression
-        n_hidden_layers = 2;
-        // batch_size = {2304 * 3072}; // resolution of image
-        // batch size was 23 before, but arc and dGPU don't have enough memory, thus 22.
-        batch_size =
-            1 << (22 + batch_size_offset); // batch size one less, because MPI does 2 tiles, thus half batch size.
-        if (world_rank == 0) {
-            std::cout << "=================================Image compression================================="
-                      << std::endl;
-        }
-        benchmark_training_and_inference<T, WIDTH>(batch_size, n_hidden_layers, iterations, gflops_training,
-                                                   gflops_inference);
+        // // Image compression
+        // n_hidden_layers = 2;
+        // // batch_size = {2304 * 3072}; // resolution of image
+        // // batch size was 23 before, but arc and dGPU don't have enough memory, thus 22.
+        // batch_size =
+        //     1 << (22 + batch_size_offset); // batch size one less, because MPI does 2 tiles, thus half batch size.
+        // if (world_rank == 0) {
+        //     std::cout << "=================================Image compression================================="
+        //               << std::endl;
+        // }
+        // benchmark_training_and_inference<T, WIDTH>(batch_size, n_hidden_layers, iterations, gflops_training,
+        //                                            gflops_inference, use_torch);
 
-        // Collect the performance data instead of printing it directly
-        perf_data.push_back({batch_size, gflops_training, gflops_inference});
-        // PINNs
-        n_hidden_layers = 5;
-        if (world_rank == 0) {
-            std::cout << "=================================PINNs=================================" << std::endl;
-        }
-        batch_size =
-            1 << (17 + batch_size_offset); // batch size one less, because MPI does 2 tiles, thus half batch size.
-        benchmark_training_and_inference<T, WIDTH>(batch_size, n_hidden_layers, iterations, gflops_training,
-                                                   gflops_inference);
+        // // Collect the performance data instead of printing it directly
+        // perf_data.push_back({batch_size, gflops_training, gflops_inference});
+        // // PINNs
+        // n_hidden_layers = 5;
+        // if (world_rank == 0) {
+        //     std::cout << "=================================PINNs=================================" << std::endl;
+        // }
+        // batch_size =
+        //     1 << (17 + batch_size_offset); // batch size one less, because MPI does 2 tiles, thus half batch size.
+        // benchmark_training_and_inference<T, WIDTH>(batch_size, n_hidden_layers, iterations, gflops_training,
+        //                                            gflops_inference, use_torch);
 
-        // Collect the performance data instead of printing it directly
-        perf_data.push_back({batch_size, gflops_training, gflops_inference});
-        // NeRF
-        n_hidden_layers = 4;
-        if (world_rank == 0) {
-            std::cout << "=================================NeRF=================================" << std::endl;
-        }
-        batch_size =
-            1 << (20 + batch_size_offset); // batch size one less, because MPI does 2 tiles, thus half batch size.
-        benchmark_training_and_inference<T, WIDTH>(batch_size, n_hidden_layers, iterations, gflops_training,
-                                                   gflops_inference);
-        // Collect the performance data instead of printing it directly
-        perf_data.push_back({batch_size, gflops_training, gflops_inference});
+        // // Collect the performance data instead of printing it directly
+        // perf_data.push_back({batch_size, gflops_training, gflops_inference});
+        // // NeRF
+        // n_hidden_layers = 4;
+        // if (world_rank == 0) {
+        //     std::cout << "=================================NeRF=================================" << std::endl;
+        // }
+        // batch_size =
+        //     1 << (20 + batch_size_offset); // batch size one less, because MPI does 2 tiles, thus half batch size.
+        // benchmark_training_and_inference<T, WIDTH>(batch_size, n_hidden_layers, iterations, gflops_training,
+        //                                            gflops_inference, use_torch);
+        // // Collect the performance data instead of printing it directly
+        // perf_data.push_back({batch_size, gflops_training, gflops_inference});
     }
 
     // At the end, print the collected performance data in a table format
@@ -156,32 +159,36 @@ int main() {
         MPI_Init(NULL, NULL);
         // ----------Benchmark for different workloads----------
 
-        std::cout << "Sycl::half, width 16" << std::endl;
-        benchmark_all<sycl::half, 16>(false);
+        // std::cout << "Sycl::half, width 16" << std::endl;
+        // benchmark_all<sycl::half, 16>(false);
 
-        std::cout << "Sycl::half, width 32" << std::endl;
-        benchmark_all<sycl::half, 32>(false);
+        // std::cout << "Sycl::half, width 32" << std::endl;
+        // benchmark_all<sycl::half, 32>(false);
 
-        std::cout << "Sycl::half, width 64" << std::endl;
-        benchmark_all<sycl::half, 64>(false);
+        // std::cout << "Sycl::half, width 64 with tinyNN" << std::endl;
+        // benchmark_all<sycl::half, 64>(false, false);
 
-        std::cout << "Sycl::half, width 128" << std::endl;
-        benchmark_all<sycl::half, 128>(false);
+        // std::cout << "Sycl::half, width 64 with libtorch" << std::endl;
+        // benchmark_all<sycl::half, 64>(false, true);
+        // std::cout << "Sycl::half, width 128" << std::endl;
+        // benchmark_all<sycl::half, 128>(false);
 
         // ----------Benchmark over batch sizes----------
 
-        std::cout << "Sycl::half, width 16" << std::endl;
-        benchmark_all<sycl::half, 16>(true);
+        // std::cout << "Sycl::half, width 16" << std::endl;
+        // benchmark_all<sycl::half, 16>(true);
 
-        std::cout << "Sycl::half, width 32" << std::endl;
-        benchmark_all<sycl::half, 32>(true);
+        // std::cout << "Sycl::half, width 32" << std::endl;
+        // benchmark_all<sycl::half, 32>(true);
 
-        std::cout << "Sycl::half, width 64" << std::endl;
-        benchmark_all<sycl::half, 64>(true);
+        std::cout << "Sycl::half, width 64 with tinyNN" << std::endl;
+        benchmark_all<sycl::half, 64>(true, false);
+        std::cout << "Sycl::half, width 64 with libtorch" << std::endl;
+        benchmark_all<sycl::half, 64>(true, true);
 
-        std::cout << "Sycl::half, width 128" << std::endl;
-        benchmark_all<sycl::half, 128>(true);
-        MPI_Finalize();
+        // std::cout << "Sycl::half, width 128" << std::endl;
+        // benchmark_all<sycl::half, 128>(true);
+        // MPI_Finalize();
 
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

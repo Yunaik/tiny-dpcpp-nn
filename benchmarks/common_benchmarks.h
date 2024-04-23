@@ -46,7 +46,7 @@ struct PerformanceData {
 
 /// Put all the common functionalities for the performance benchmarks here.
 void WriteBenchmarkHeader(const std::string &str, const size_t batch_size, const int WIDTH, const int n_hidden_layers,
-                          const int typesize, const std::string &name_of_type, sycl::queue &q) {
+                          const int typesize, const std::string &name_of_type) {
 
     int world_rank;
     int world_size;
@@ -55,7 +55,6 @@ void WriteBenchmarkHeader(const std::string &str, const size_t batch_size, const
 
     if (world_rank == 0) {
         std::cout << str << std::endl;
-        std::cout << "Running on " << q.get_device().get_info<sycl::info::device::name>() << std::endl;
         std::cout << "n_hidden_layers = " << n_hidden_layers << ", WIDTH = " << WIDTH << ", batch_size = " << batch_size
                   << ", typename = " << name_of_type << ", type size = " << typesize << " bytes" << std::endl
                   << "MPI world_size = " << world_size << std::endl;
