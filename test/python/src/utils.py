@@ -78,7 +78,6 @@ def create_models(
     }
 
     if use_nwe:
-
         encoding_config = {
             "otype": "Identity",
             "n_dims_to_encode": input_size,  # assuming the input size is 2 as in other tests
@@ -97,6 +96,7 @@ def create_models(
             n_input_dims=input_size,
             n_output_dims=output_size,
             network_config=network_config,
+            dtype=dtype
         )
 
     weights = model_dpcpp.get_reshaped_params(datatype=dtype)

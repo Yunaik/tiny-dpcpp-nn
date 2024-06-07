@@ -11,6 +11,7 @@ output_funcs = ["linear", "relu", "sigmoid"]
 output_sizes = [8]
 activation_funcs = ["relu", "linear", "sigmoid"]
 hidden_layer_counts = [1, 2, 4]
+dtypes = [torch.float16, torch.bfloat16]
 # hidden_sizes = [16, 32, 64, 128]
 hidden_sizes = [64]
 
@@ -63,7 +64,7 @@ def train_model(model, x_train, y_train, n_steps):
 
 
 @pytest.mark.parametrize(
-    "input_size, hidden_size, hidden_layers, output_size, activation_func, output_func",
+    "input_size, hidden_size, hidden_layers, output_size, activation_func, output_func, dtype",
     [
         (
             input_size,
@@ -72,6 +73,7 @@ def train_model(model, x_train, y_train, n_steps):
             output_size,
             activation_func,
             output_func,
+            dtype,
         )
         for input_size in input_sizes
         for hidden_layers in hidden_layer_counts
@@ -79,6 +81,7 @@ def train_model(model, x_train, y_train, n_steps):
         for output_size in output_sizes
         for activation_func in activation_funcs
         for output_func in output_funcs
+        for dtype in dtypes
     ],
 )
 def test_grad(
@@ -88,6 +91,7 @@ def test_grad(
     output_size,
     activation_func,
     output_func,
+    dtype,
     iterations=2,
     n_steps=1,  # if this is too large, there will be accumulated error (weights aren't the same, thus the loss is not the same etc)
 ):
@@ -112,6 +116,7 @@ def test_grad(
             output_size,
             activation_func,
             output_func,
+            dtype,
         )
 
         loss_dpcpp, y_dpcpp, grads_dpcpp, params_dpcpp = train_model(
@@ -137,7 +142,7 @@ def test_grad(
 
 
 @pytest.mark.parametrize(
-    "input_size, hidden_size, hidden_layers, output_size, activation_func, output_func",
+    "input_size, hidden_size, hidden_layers, output_size, activation_func, output_func, dtype",
     [
         (
             input_size,
@@ -146,6 +151,7 @@ def test_grad(
             output_size,
             activation_func,
             output_func,
+            dtype,
         )
         for input_size in input_sizes
         for hidden_layers in hidden_layer_counts
@@ -153,10 +159,17 @@ def test_grad(
         for output_size in output_sizes
         for activation_func in activation_funcs
         for output_func in output_funcs
+        for dtype in dtypes
     ],
 )
 def test_fwd(
-    input_size, hidden_size, hidden_layers, output_size, activation_func, output_func
+    input_size,
+    hidden_size,
+    hidden_layers,
+    output_size,
+    activation_func,
+    output_func,
+    dtype,
 ):
     # Generate random input data for testing
     torch.manual_seed(123)
@@ -167,6 +180,7 @@ def test_fwd(
         output_size,
         activation_func,
         output_func,
+        dtype,
     )
     model_torch.to(DEVICE_NAME)
     model_dpcpp.to(DEVICE_NAME)

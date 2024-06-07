@@ -100,7 +100,10 @@ class _module_function(torch.autograd.Function):
         doutput = doutput * loss_scale
 
         with torch.no_grad():
-            if "encoding_config" in ctx.info and ctx.info["encoding_config"]["otype"] == "Grid":
+            if (
+                "encoding_config" in ctx.info
+                and ctx.info["encoding_config"]["otype"] == "Grid"
+            ):
                 input_grad = None
 
                 if batch_size == 0:
@@ -338,6 +341,7 @@ class Network(Module):
             self.activation,
             self.output_activation,
             self.width,
+            str(self.dtype),
         )
 
 
@@ -381,6 +385,7 @@ class NetworkWithInputEncoding(Module):
             self.output_activation,
             self.encoding_config,
             self.width,
+            str(self.dtype),
         )
 
 
