@@ -195,5 +195,5 @@ plt.legend()
 plt.ylim(-1, 1)
 plt.tight_layout()
 
-# Save the figure instead of showing it
-plt.savefig("loss_and_function.png")
+# # Save the figure instead of showing it
+# plt.savefig("loss_and_function.png")

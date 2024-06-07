@@ -96,7 +96,7 @@ def create_models(
             n_input_dims=input_size,
             n_output_dims=output_size,
             network_config=network_config,
-            dtype=dtype
+            dtype=dtype,
         )
 
     weights = model_dpcpp.get_reshaped_params(datatype=dtype)

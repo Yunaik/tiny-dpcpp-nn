@@ -59,7 +59,7 @@ def from_packed_layout_coord(idx, rows, cols):
 
 class _module_function(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, native_tnn_module, input, params, info):
+    def forward(ctx, native_tnn_module, input, params, info, loss_scale):
         batch_size = input.shape[0]
         if info["is_in_eval_mode"]:
             output = native_tnn_module.inference(input.to(params.dtype))
@@ -74,6 +74,8 @@ class _module_function(torch.autograd.Function):
         ctx.save_for_backward(input, output, params)
         ctx.info = info
         ctx.native_tnn_module = native_tnn_module
+        ctx.loss_scale = loss_scale
+
         if "output_dim" in info:
             return output[
                 ..., : info["output_dim"]
@@ -85,6 +87,8 @@ class _module_function(torch.autograd.Function):
     @staticmethod
     def backward(ctx, doutput):
         input, _, params = ctx.saved_tensors
+        loss_scale = ctx.loss_scale
+
         if "width" in ctx.info:
             doutput = torch.hstack(
                 (
@@ -96,7 +100,6 @@ class _module_function(torch.autograd.Function):
             )
 
         batch_size = input.shape[0]
-        loss_scale = 1.0  # because half precision
         doutput = doutput * loss_scale
 
         with torch.no_grad():
@@ -137,7 +140,7 @@ class _module_function(torch.autograd.Function):
         input_grad = None if input_grad is None else (input_grad / loss_scale)
 
         # 4 inputs to forward, so need 4 grads
-        return (None, input_grad, grad, None)
+        return (None, input_grad, grad, None, None)
 
 
 class Module(torch.nn.Module):
@@ -145,6 +148,11 @@ class Module(torch.nn.Module):
         super(Module, self).__init__()
         self.device = device
         self.dtype = dtype
+
+        if dtype == torch.float16:
+            self.loss_scale = 128.0
+        else:
+            self.loss_scale = 1.0
 
         self.tnn_module = self.create_module()
         if self.tnn_module.n_params() and create_params:
@@ -307,6 +315,7 @@ class Module(torch.nn.Module):
             padded_tensor.contiguous(),
             self.params,
             info,
+            self.loss_scale
         )
         return output[:batch_size, ...]
 

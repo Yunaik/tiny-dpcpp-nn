@@ -117,6 +117,7 @@ def test_grad(
             activation_func,
             output_func,
             dtype,
+            use_nwe=True,
         )
 
         loss_dpcpp, y_dpcpp, grads_dpcpp, params_dpcpp = train_model(
@@ -181,6 +182,7 @@ def test_fwd(
         activation_func,
         output_func,
         dtype,
+        use_nwe=True,
     )
     model_torch.to(DEVICE_NAME)
     model_dpcpp.to(DEVICE_NAME)
@@ -209,7 +211,7 @@ if __name__ == "__main__":
     activation_func = "relu"
     output_func = "linear"
     # output_func = "sigmoid"
-
+    dtype = torch.float16
     test_fwd(
         input_width,
         hidden_size,
@@ -217,6 +219,7 @@ if __name__ == "__main__":
         output_width,
         activation_func,
         output_func,
+        dtype,
     )
     print("Passed fwd test")
 
@@ -227,5 +230,6 @@ if __name__ == "__main__":
         output_width,
         activation_func,
         output_func,
+        dtype,
     )
     print("Passed bwd test")
