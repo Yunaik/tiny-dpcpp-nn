@@ -95,6 +95,7 @@ def test_grad(
     iterations=2,
     n_steps=1,  # if this is too large, there will be accumulated error (weights aren't the same, thus the loss is not the same etc)
 ):
+
     for iter_ in range(iterations):
         print(f"Starting iteration {iter_}")
         if iter_ == 0:
@@ -108,6 +109,7 @@ def test_grad(
         else:
             x_train = torch.rand([BATCH_SIZE, input_size]).to(DEVICE_NAME)
             y_train = torch.rand([BATCH_SIZE, output_size]).to(DEVICE_NAME)
+        torch.manual_seed(123)
 
         # Need to generate new model, because weights are updated in one loop.
         model_dpcpp, model_torch = create_models(
@@ -117,7 +119,7 @@ def test_grad(
             activation_func,
             output_func,
             dtype,
-            use_nwe=True,
+            use_nwe=False,
         )
 
         loss_dpcpp, y_dpcpp, grads_dpcpp, params_dpcpp = train_model(
@@ -129,6 +131,7 @@ def test_grad(
 
         params_dpcpp = params_dpcpp[0][0]
         params_torch = params_torch[0]
+        print("Compare params")
         compare_matrices(params_dpcpp, params_torch)
 
         grads_dpcpp = grads_dpcpp[0][0]
@@ -139,6 +142,7 @@ def test_grad(
                 torch.abs(grads_dpcpp[layer]).sum()
                 - torch.abs(grads_dpcpp[layer]).sum()
             ) < 1e-3
+        print("Compare grads")
         compare_matrices(grads_dpcpp, grads_torch)
 
 
@@ -182,7 +186,7 @@ def test_fwd(
         activation_func,
         output_func,
         dtype,
-        use_nwe=True,
+        use_nwe=False,
     )
     model_torch.to(DEVICE_NAME)
     model_dpcpp.to(DEVICE_NAME)
@@ -211,7 +215,7 @@ if __name__ == "__main__":
     activation_func = "relu"
     output_func = "linear"
     # output_func = "sigmoid"
-    dtype = torch.float16
+    dtype = torch.bfloat16
     test_fwd(
         input_width,
         hidden_size,

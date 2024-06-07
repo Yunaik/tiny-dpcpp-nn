@@ -99,7 +99,7 @@ def create_models(
             dtype=dtype,
         )
 
-    weights = model_dpcpp.get_reshaped_params(datatype=dtype)
+    weights = model_dpcpp.get_reshaped_params()
     model_torch.set_weights(weights)
 
     grads_dpcpp, params_dpcpp = get_grad_params(model_dpcpp)

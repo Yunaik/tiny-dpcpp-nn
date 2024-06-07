@@ -183,7 +183,6 @@ class Module(torch.nn.Module):
     def get_reshaped_params(
         self,
         weights=None,
-        datatype=torch.float,
         is_packed_format=True,
         is_transposed=True,
     ):
@@ -199,7 +198,7 @@ class Module(torch.nn.Module):
             self.width if self.n_input_dims <= self.width else self.n_input_dims
         )  # because we pad
         input_matrix = (
-            torch.zeros(self.width, n_input_dims).to(datatype).to(self.device)
+            torch.zeros(self.width, n_input_dims).to(self.dtype).to(self.device)
         )
 
         for i in range(n_input_dims):
@@ -221,7 +220,7 @@ class Module(torch.nn.Module):
 
         for nth_hidden in range(self.n_hidden_layers - 1):
             hidden_matrix = (
-                torch.zeros(self.width, self.width).to(datatype).to(self.device)
+                torch.zeros(self.width, self.width).to(self.dtype).to(self.device)
             )
 
             for i in range(self.width):
@@ -242,7 +241,9 @@ class Module(torch.nn.Module):
                         ]
             hidden_matrices.append(hidden_matrix)
 
-        output_matrix = torch.zeros(self.width, self.width).to(datatype).to(self.device)
+        output_matrix = (
+            torch.zeros(self.width, self.width).to(self.dtype).to(self.device)
+        )
 
         for i in range(self.width):
             for j in range(
@@ -315,7 +316,7 @@ class Module(torch.nn.Module):
             padded_tensor.contiguous(),
             self.params,
             info,
-            self.loss_scale
+            self.loss_scale,
         )
         return output[:batch_size, ...]
 
