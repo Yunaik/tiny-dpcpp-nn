@@ -404,7 +404,9 @@ class NetworkWithInputEncoding(Module):
 
         if "n_dims_to_encode" not in self.encoding_config:
             self.encoding_config["n_dims_to_encode"] = self.n_input_dims
-
+        assert (
+            input_dtype == torch.float
+        ), f"Currently only torch.float supported as input_dtype. {input_dtype} was chosen instead"
         super().__init__(
             device=device,
             input_dtype=input_dtype,
