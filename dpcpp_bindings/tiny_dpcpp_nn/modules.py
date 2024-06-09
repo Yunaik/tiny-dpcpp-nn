@@ -144,12 +144,19 @@ class _module_function(torch.autograd.Function):
 
 
 class Module(torch.nn.Module):
-    def __init__(self, create_params=False, device="xpu", dtype=torch.bfloat16):
+    def __init__(
+        self,
+        create_params=False,
+        device="xpu",
+        input_dtype=torch.float16,
+        backend_param_dtype=torch.float16,
+    ):
         super(Module, self).__init__()
         self.device = device
-        self.dtype = dtype
+        self.input_dtype = input_dtype
+        self.backend_param_dtype = backend_param_dtype
 
-        if dtype == torch.float16:
+        if backend_param_dtype == torch.float16:
             self.loss_scale = 128.0
         else:
             self.loss_scale = 1.0
@@ -157,7 +164,10 @@ class Module(torch.nn.Module):
         self.tnn_module = self.create_module()
         if self.tnn_module.n_params() and create_params:
             torch_params = (
-                torch.ones(self.tnn_module.n_params(), 1).to(dtype=self.dtype) * 0.1
+                torch.ones(self.tnn_module.n_params(), 1).to(
+                    dtype=self.backend_param_dtype
+                )
+                * 0.1
             )
             # Set the initial parameters based on the transformed torch_params
             initial_params = self.tnn_module.initial_params(torch_params.to(device))
@@ -198,7 +208,9 @@ class Module(torch.nn.Module):
             self.width if self.n_input_dims <= self.width else self.n_input_dims
         )  # because we pad
         input_matrix = (
-            torch.zeros(self.width, n_input_dims).to(self.dtype).to(self.device)
+            torch.zeros(self.width, n_input_dims)
+            .to(self.backend_param_dtype)
+            .to(self.device)
         )
 
         for i in range(n_input_dims):
@@ -220,7 +232,9 @@ class Module(torch.nn.Module):
 
         for nth_hidden in range(self.n_hidden_layers - 1):
             hidden_matrix = (
-                torch.zeros(self.width, self.width).to(self.dtype).to(self.device)
+                torch.zeros(self.width, self.width)
+                .to(self.backend_param_dtype)
+                .to(self.device)
             )
 
             for i in range(self.width):
@@ -242,7 +256,9 @@ class Module(torch.nn.Module):
             hidden_matrices.append(hidden_matrix)
 
         output_matrix = (
-            torch.zeros(self.width, self.width).to(self.dtype).to(self.device)
+            torch.zeros(self.width, self.width)
+            .to(self.backend_param_dtype)
+            .to(self.device)
         )
 
         for i in range(self.width):
@@ -284,7 +300,7 @@ class Module(torch.nn.Module):
             x
             if batch_size == padded_batch_size
             else torch.nn.functional.pad(x, [0, 0, 0, padded_batch_size - batch_size])
-        ).to(dtype=self.dtype)
+        ).to(dtype=self.input_dtype)
 
         if self.name == "network":
             padded_tensor = (
@@ -293,7 +309,7 @@ class Module(torch.nn.Module):
                 else torch.nn.functional.pad(
                     padded_tensor, [0, self.width - input_dim, 0, 0]
                 )
-            ).to(dtype=self.dtype)
+            ).to(dtype=self.input_dtype)
         info = {"is_in_eval_mode": not self.training}
 
         if hasattr(self, "n_hidden_layers"):
@@ -328,7 +344,8 @@ class Network(Module):
         n_output_dims,
         network_config,
         device="xpu",
-        dtype=torch.bfloat16,
+        input_dtype=torch.float16,
+        backend_param_dtype=torch.float16,
     ):
         self.network_config = network_config
 
@@ -341,7 +358,11 @@ class Network(Module):
             self.network_config["output_activation"]
         )
         self.name = "network"
-        super().__init__(device=device, dtype=dtype)
+        super().__init__(
+            device=device,
+            input_dtype=input_dtype,
+            backend_param_dtype=backend_param_dtype,
+        )
 
     def create_module(self):
         return create_network(
@@ -351,7 +372,7 @@ class Network(Module):
             self.activation,
             self.output_activation,
             self.width,
-            str(self.dtype),
+            str(self.backend_param_dtype),
         )
 
 
@@ -363,7 +384,8 @@ class NetworkWithInputEncoding(Module):
         network_config,
         encoding_config,
         device="xpu",
-        dtype=torch.bfloat16,
+        input_dtype=torch.float,
+        backend_param_dtype=torch.float16,
     ):
         self.network_config = network_config
 
@@ -383,7 +405,11 @@ class NetworkWithInputEncoding(Module):
         if "n_dims_to_encode" not in self.encoding_config:
             self.encoding_config["n_dims_to_encode"] = self.n_input_dims
 
-        super().__init__(device=device, dtype=dtype)
+        super().__init__(
+            device=device,
+            input_dtype=input_dtype,
+            backend_param_dtype=backend_param_dtype,
+        )
 
     def create_module(self):
 
@@ -395,7 +421,7 @@ class NetworkWithInputEncoding(Module):
             self.output_activation,
             self.encoding_config,
             self.width,
-            str(self.dtype),
+            str(self.backend_param_dtype),
         )
 
 
@@ -405,7 +431,8 @@ class Encoding(Module):
         n_input_dims,
         encoding_config,
         device="xpu",
-        dtype=torch.float,
+        input_dtype=torch.float,
+        backend_param_dtype=torch.float,
     ):
         self.n_input_dims = n_input_dims
 
@@ -417,7 +444,19 @@ class Encoding(Module):
         if "n_dims_to_encode" not in self.encoding_config:
             self.encoding_config["n_dims_to_encode"] = self.n_input_dims
 
-        super().__init__(device=device, dtype=dtype)
+        assert (
+            input_dtype == torch.float
+        ), "Only torch.float is currently supported for encoding"
+        assert (
+            backend_param_dtype == torch.float
+        ), "Only torch.float is currently supported for encoding"
+        # Spherical and identity can have non-float, but grid encoding needs
+        # float, as half precision atomics are currently not supported in SYCL
+        super().__init__(
+            device=device,
+            input_dtype=input_dtype,
+            backend_param_dtype=backend_param_dtype,
+        )
 
         self.n_output_dims = self.tnn_module.n_output_dims()
 

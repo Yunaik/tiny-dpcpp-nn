@@ -55,7 +55,8 @@ def create_models(
     output_size,
     activation_func,
     output_func,
-    dtype=torch.bfloat16,
+    input_dtype=torch.float16,
+    backend_param_dtype=torch.float16,
     use_nwe=True,
 ):
 
@@ -67,7 +68,7 @@ def create_models(
         activation_func,
         output_func,
         use_batchnorm=False,
-        dtype=dtype,
+        dtype=backend_param_dtype,
     )
 
     network_config = {
@@ -90,13 +91,16 @@ def create_models(
             n_output_dims=output_size,
             encoding_config=encoding_config,
             network_config=network_config,
+            input_dtype=input_dtype,
+            backend_param_dtype=backend_param_dtype,
         )
     else:
         model_dpcpp = Network(
             n_input_dims=input_size,
             n_output_dims=output_size,
             network_config=network_config,
-            dtype=dtype,
+            input_dtype=input_dtype,
+            backend_param_dtype=backend_param_dtype,
         )
 
     weights = model_dpcpp.get_reshaped_params()

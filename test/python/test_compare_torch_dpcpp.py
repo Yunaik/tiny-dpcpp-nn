@@ -17,6 +17,7 @@ hidden_sizes = [64]
 
 BATCH_SIZE = 2**10
 DEVICE_NAME = "xpu"
+USE_NWE = True
 
 
 class CustomMSELoss(torch.nn.Module):
@@ -119,7 +120,7 @@ def test_grad(
             activation_func,
             output_func,
             dtype,
-            use_nwe=False,
+            use_nwe=USE_NWE,
         )
 
         loss_dpcpp, y_dpcpp, grads_dpcpp, params_dpcpp = train_model(
@@ -186,7 +187,7 @@ def test_fwd(
         activation_func,
         output_func,
         dtype,
-        use_nwe=False,
+        use_nwe=USE_NWE,
     )
     model_torch.to(DEVICE_NAME)
     model_dpcpp.to(DEVICE_NAME)
@@ -194,10 +195,10 @@ def test_fwd(
     # print("Params model_dpcpp: ", list(model_dpcpp.parameters())[:10])
     y_torch = model_torch(input_data)
     y_dpcpp = model_dpcpp(input_data)
-    print("Torch output: ", y_torch[-1, :])
-    print("DPCPP output: ", y_dpcpp[-1, :])
 
     if abs(y_torch.sum() - y_dpcpp.sum()) / (abs(y_torch).sum()) > 0.01:
+        print("Torch output: ", y_torch[-1, :])
+        print("DPCPP output: ", y_dpcpp[-1, :])
         print(
             f"diff: {y_torch[-1, :] - y_dpcpp[-1, :]}, average: {abs(y_torch - y_dpcpp).mean()}"
         )
@@ -207,15 +208,15 @@ def test_fwd(
 
 
 if __name__ == "__main__":
-    input_width = 8
+    input_width = 16
     output_width = 16
     hidden_size = 16
     hidden_layers = 2
     # activation_func = "linear"
     activation_func = "relu"
-    output_func = "linear"
-    # output_func = "sigmoid"
-    dtype = torch.bfloat16
+    # output_func = "linear"
+    output_func = "sigmoid"
+    dtype = torch.float16
     test_fwd(
         input_width,
         hidden_size,
