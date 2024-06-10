@@ -14,6 +14,7 @@
 
 #include "DeviceMatrix.h"
 #include "common.h"
+#include "io.h"
 #include <random>
 
 // completely generic Network.
@@ -82,8 +83,18 @@ template <typename T> class Network : public NetworkBase<T> {
     sycl::queue &get_queue() { return m_q; }
     const sycl::queue &get_queue() const { return m_q; }
 
-    virtual void set_weights_matrices(const std::vector<T> &weights) {
-        m_weights_matrices.copy_from_host(weights).wait();
+    virtual void set_weights_matrices(const std::vector<T> &unpacked_weights) {
+        if (m_weights_matrices.nelements() != unpacked_weights.size()) {
+            std::string errorMessage =
+                "m_weights_matrices nelements: " + std::to_string(m_weights_matrices.nelements()) +
+                " does not match unpacked_weights size: " + std::to_string(unpacked_weights.size()) +
+                ". Consider padding input and output to have the same amount as network_width";
+            throw std::runtime_error(errorMessage);
+        }
+        std::vector<T> packed_weights =
+            io::get_packed_weights<T>(unpacked_weights, n_hidden_layers_, input_width_, network_width_, output_width_);
+
+        m_weights_matrices.copy_from_host(packed_weights).wait();
         ZeroWeightsPadding(original_input_width_, original_output_width_);
         TransposeWeights(m_weights_matrices, m_weightsT_matrices);
     };

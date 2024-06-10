@@ -79,39 +79,44 @@ json validateAndCopyEncodingConfig(const json &encodingConfig) {
     return encodingConfigCopy;
 }
 
-template <typename T, int WIDTH>
+template <typename T>
 std::vector<T> get_packed_weights(std::vector<T> unpacked_weights, int m_n_hidden_layers, int input_width,
-                                  int output_width) {
+                                  int network_width, int output_width) {
     std::vector<T> weights_packed(unpacked_weights.size(), 0.0);
 
     for (int idx = 0; idx < weights_packed.size(); idx++) {
 
         int i = 0;
         int j = 0;
-        if (idx < input_width * WIDTH) {
+        if (idx < input_width * network_width) {
 
-            i = idx / WIDTH; // rows
-            j = idx % WIDTH; // cols
+            i = idx / network_width; // rows
+            j = idx % network_width; // cols
 
-            weights_packed[toPackedLayoutCoord(i + j * WIDTH, WIDTH, WIDTH)] = unpacked_weights[idx];
-        } else if ((idx >= input_width * WIDTH) &&
-                   (idx < input_width * WIDTH + (m_n_hidden_layers - 1) * WIDTH * WIDTH)) {
-            int layer = (idx - input_width * WIDTH) / (WIDTH * WIDTH);
-            int mat_offset = (idx - (input_width * WIDTH + layer * WIDTH * WIDTH)) % (WIDTH * WIDTH);
+            weights_packed[toPackedLayoutCoord(i + j * network_width, network_width, network_width)] =
+                unpacked_weights[idx];
+        } else if ((idx >= input_width * network_width) &&
+                   (idx < input_width * network_width + (m_n_hidden_layers - 1) * network_width * network_width)) {
+            int layer = (idx - input_width * network_width) / (network_width * network_width);
+            int mat_offset = (idx - (input_width * network_width + layer * network_width * network_width)) %
+                             (network_width * network_width);
 
-            i = mat_offset / WIDTH; // rows
-            j = mat_offset % WIDTH; // cols
+            i = mat_offset / network_width; // rows
+            j = mat_offset % network_width; // cols
 
-            weights_packed[input_width * WIDTH + layer * WIDTH * WIDTH +
-                           toPackedLayoutCoord(i + j * WIDTH, WIDTH, WIDTH)] = unpacked_weights[idx];
+            weights_packed[input_width * network_width + layer * network_width * network_width +
+                           toPackedLayoutCoord(i + j * network_width, network_width, network_width)] =
+                unpacked_weights[idx];
         } else {
             int mat_offset =
-                (idx - input_width * WIDTH - (m_n_hidden_layers - 1) * WIDTH * WIDTH) % (WIDTH * output_width);
-            i = mat_offset / WIDTH; // rows
-            j = mat_offset % WIDTH; // cols
+                (idx - input_width * network_width - (m_n_hidden_layers - 1) * network_width * network_width) %
+                (network_width * output_width);
+            i = mat_offset / network_width; // rows
+            j = mat_offset % network_width; // cols
 
-            weights_packed[input_width * WIDTH + (m_n_hidden_layers - 1) * WIDTH * WIDTH +
-                           toPackedLayoutCoord(i + j * WIDTH, WIDTH, WIDTH)] = unpacked_weights[idx];
+            weights_packed[input_width * network_width + (m_n_hidden_layers - 1) * network_width * network_width +
+                           toPackedLayoutCoord(i + j * network_width, network_width, network_width)] =
+                unpacked_weights[idx];
         }
     }
 
@@ -143,7 +148,7 @@ std::vector<T> load_weights_as_packed_from_file(std::string filename, int m_n_hi
 
     file.close();
 
-    return get_packed_weights<T, WIDTH>(data_vec, m_n_hidden_layers, input_width, output_width);
+    return get_packed_weights<T>(data_vec, m_n_hidden_layers, input_width, WIDTH, output_width);
 }
 
 template <typename T> std::vector<T> loadVectorFromCSV(const std::string &filename) {
