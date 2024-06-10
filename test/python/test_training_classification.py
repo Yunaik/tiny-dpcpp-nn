@@ -16,6 +16,44 @@ PRINT_PROGRESS = True
 dtypes = [torch.float16, torch.bfloat16]
 
 
+class SimpleSGDOptimizer(torch.optim.Optimizer):
+    def __init__(self, params, name="", lr=0.01):
+        if lr < 0.0:
+            raise ValueError("Invalid learning rate: {}".format(lr))
+        defaults = dict(lr=lr)
+        super(SimpleSGDOptimizer, self).__init__(params, defaults)
+        self.name = name
+
+    def step(self, closure=None):
+        """Performs a single optimization step."""
+        loss = None
+        if closure is not None:
+            loss = closure()
+        grad_sum = 0.0
+        param_sum = 0.0
+        for group in self.param_groups:
+            for idx, p in enumerate(group["params"]):
+                if p.grad is None:
+                    print("p.grad is none")
+                    continue
+                grad = p.grad.data
+                # if grad.shape[1] == 1:
+                #     print("dpcpp grad: ")
+                #     grad_last_layer_reshaped = grad[-256:, 0].reshape(16, 16)
+                #     print(grad_last_layer_reshaped)
+                #     print("dpcpp param: ")
+                #     param_last_layer_reshaped = p.data[-256:, 0].reshape(16, 16)
+                #     print(param_last_layer_reshaped)
+
+                p.data = p.data - group["lr"] * grad
+
+                grad_sum += torch.abs(grad).sum()
+                param_sum += torch.abs(p.data).sum()
+        print(f"{self.name} Grad sum: {grad_sum}")
+        print(f"{self.name} p.data sum: {param_sum}")
+        return loss
+
+
 def generate_data(num_samples, input_size, output_size):
     X = torch.randn(num_samples, input_size).to("xpu")
     y = torch.randint(low=0, high=output_size, size=(num_samples,)).to("xpu")
@@ -24,6 +62,7 @@ def generate_data(num_samples, input_size, output_size):
 
 def train_mlp(model, data, labels, epochs, learning_rate):
     criterion = nn.CrossEntropyLoss()
+    # optimizer = SimpleSGDOptimizer(model.parameters(), lr=learning_rate)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     best_loss = float("inf")
@@ -42,6 +81,9 @@ def train_mlp(model, data, labels, epochs, learning_rate):
         if epoch == 1:
             break
         loss.backward()  # Backward pass
+        print(
+            f"Params grad: {model.params.grad.cpu()}, min: {model.params.grad.cpu().min()}, max: {model.params.grad.cpu().max()}"
+        )
         optimizer.step()  # Update weights
         print(
             f"Params post: {model.params.cpu()}, max: {model.params.cpu().max()},  min: {model.params.cpu().min()}"
@@ -306,8 +348,8 @@ def test_network_with_encoding_all(dtype):
 
 
 if __name__ == "__main__":
-    dtype = torch.bfloat16
-    # dtype = torch.float16
+    # dtype = torch.bfloat16
+    dtype = torch.float16
     print("Testing network")
     test_network(dtype)
 

@@ -61,6 +61,7 @@ class Module {
 
     virtual torch::Tensor initialize_params() = 0;
     virtual torch::Tensor initialize_params(torch::Tensor &tensor) = 0;
+    virtual void set_params(torch::Tensor &tensor) = 0;
     virtual torch::Tensor forward_pass(torch::Tensor input_tensor) = 0;
     virtual std::tuple<torch::Tensor, torch::Tensor>
     backward_pass(torch::Tensor input_tensor, torch::Tensor input_from_fwd, bool pack_gradient, bool get_dl_dinput) = 0;
@@ -362,9 +363,16 @@ template <typename T> class EncodingModule : public Module {
 
     torch::Tensor initialize_params(torch::Tensor &tensor) override {
         if (params_full_precision_ptr_ != nullptr) {
-            params_full_precision_ptr_->copy_from_device(tensor.data_ptr<T>());
+            set_params(tensor);
         }
         return initialize_params();
+    }
+
+    void set_params(torch::Tensor &params) {
+        if (params_full_precision_ptr_ == nullptr) {
+            throw std::runtime_error("params_full_precision_ptr was not set");
+        }
+        params_full_precision_ptr_->copy_from_device(params.data_ptr<T>());
     }
 
     size_t n_params() override { return encoding_->n_params(); }
