@@ -51,8 +51,8 @@ class PybindingModule {
 
     torch::Tensor initial_params(torch::Tensor &tensor) { return m_module->initialize_params(tensor); }
 
-    torch::Tensor set_params(torch::Tensor &tensor, bool weights_are_packed) {
-        return m_module->set_params(tensor, weights_are_packed);
+    void set_params(torch::Tensor &tensor, bool weights_are_packed) {
+        m_module->set_params(tensor, weights_are_packed);
     }
 
     uint32_t n_params() const { return (uint32_t)m_module->n_params(); }

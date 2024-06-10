@@ -368,7 +368,7 @@ template <typename T> class EncodingModule : public Module {
         return initialize_params();
     }
 
-    void set_params(torch::Tensor &params, bool weights_are_packed) {
+    void set_params(torch::Tensor &params, bool weights_are_packed) override {
         if (params_full_precision_ptr_ == nullptr) {
             throw std::runtime_error("params_full_precision_ptr was not set");
         }
@@ -536,7 +536,7 @@ template <typename T, int WIDTH> class NetworkModule : public Module {
     size_t n_params() override { return network_.get_weights_matrices().nelements(); }
     size_t n_output_dims() override { return network_.get_output_width(); }
 
-    void set_params(torch::Tensor &params, bool weights_are_packed) {
+    void set_params(torch::Tensor &params, bool weights_are_packed) override {
         network_.set_weights_matrices(convertTensorToVector<T>(params), weights_are_packed);
     }
 
@@ -801,7 +801,7 @@ template <typename T_enc, typename T_net, int WIDTH> class NetworkWithEncodingMo
     size_t n_params() override { return network_->get_network()->get_weights_matrices().nelements(); }
     size_t n_output_dims() override { return network_->get_network()->get_output_width(); }
 
-    void set_params(torch::Tensor &params, bool weights_are_packed) {
+    void set_params(torch::Tensor &params, bool weights_are_packed) override {
         int network_param_size = network_->get_network()->get_weights_matrices().nelements();
         int encoding_param_size = network_->get_encoding()->n_params();
         if (encoding_param_size) {
@@ -811,7 +811,7 @@ template <typename T_enc, typename T_net, int WIDTH> class NetworkWithEncodingMo
             network_->get_network()->set_weights_matrices(convertTensorToVector<T_net>(params), weights_are_packed);
             network_->set_encoding_params(convertTensorToVector<T_enc>(encoding_params));
         } else {
-            network_->get_network()->set_weights_matrices(convertTensorToVector<T_net>(params, weights_are_packed));
+            network_->get_network()->set_weights_matrices(convertTensorToVector<T_net>(params), weights_are_packed);
         }
     }
 
@@ -827,10 +827,10 @@ template <typename T_enc, typename T_net, int WIDTH> class NetworkWithEncodingMo
         auto [network_params, encoding_params] =
             slice_and_convert_params(all_params_vec, network_param_size, encoding_param_size);
         if (encoding_param_size) {
-            network_->get_network()->set_weights_matrices(network_params);
+            network_->get_network()->set_weights_matrices(network_params, false);
             network_->set_encoding_params(encoding_params);
         } else {
-            network_->get_network()->set_weights_matrices(network_params);
+            network_->get_network()->set_weights_matrices(network_params, false);
         }
     }
 

@@ -14,7 +14,6 @@
 
 #include "DeviceMatrix.h"
 #include "common.h"
-#include "io.h"
 #include <random>
 
 // completely generic Network.
@@ -96,7 +95,7 @@ template <typename T> class Network : public NetworkBase<T> {
             packed_weights = weights;
         } else {
             packed_weights =
-                io::get_packed_weights<T>(weights, n_hidden_layers_, input_width_, network_width_, output_width_);
+                get_packed_weights<T>(weights, n_hidden_layers_, input_width_, network_width_, output_width_);
         }
 
         m_weights_matrices.copy_from_host(packed_weights).wait();

@@ -11,10 +11,11 @@ output_funcs = ["linear", "sigmoid"]
 output_sizes = [1, 2, 4, 8, 16]
 activation_funcs = ["relu", "linear", "sigmoid"]
 hidden_layer_counts = [1, 2, 4]
-# dtypes = [torch.float16, torch.bfloat16]
-dtypes = [torch.bfloat16]
+dtypes = [torch.float16, torch.bfloat16]
+# dtypes = [torch.bfloat16]
 hidden_sizes = [16, 32, 64, 128]
-use_nwe_array = [False, True]
+# use_nwe_array = [False, True]
+use_nwe_array = [False]
 BATCH_SIZE = 2**10
 DEVICE_NAME = "xpu"
 
@@ -223,13 +224,13 @@ if __name__ == "__main__":
     input_width = 2
     hidden_size = 16
     hidden_layers = 1
-    output_width = 2
-    # activation_func = "sigmoid"
+    output_width = 1
     activation_func = "sigmoid"
-    output_func = "relu"
+    # activation_func = "relu"
+    output_func = "linear"
     # output_func = "sigmoid"
     dtype = torch.bfloat16
-    use_nwe = True
+    use_nwe = False
     test_fwd(
         input_width,
         hidden_size,
