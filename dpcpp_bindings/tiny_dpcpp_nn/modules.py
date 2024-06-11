@@ -190,7 +190,10 @@ class Module(torch.nn.Module):
             )
 
     def set_params(self, params):
-        self.tnn_module.set_params(params)
+        assert isinstance(params, torch.Tensor), "Params is not a torch.Tensor"
+        if len(params.shape) > 1:
+            params = params.flatten()
+        self.tnn_module.set_params(params, False)
 
     def get_reshaped_params(
         self,
