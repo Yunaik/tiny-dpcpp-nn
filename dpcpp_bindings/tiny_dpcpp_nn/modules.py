@@ -106,7 +106,6 @@ class _module_function(torch.autograd.Function):
             if (
                 "encoding_config"
                 in ctx.info
-                # and ctx.info["encoding_config"]["otype"] == "Grid"
             ):
                 input_grad = None
 
