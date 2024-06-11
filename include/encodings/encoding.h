@@ -46,7 +46,7 @@ struct EncodingParams {
 struct EncodingNames {
     inline static const std::string IDENTITY = "Identity";
     inline static const std::string SPHERICALHARMONICS = "SphericalHarmonics";
-    inline static const std::string GRID = "Grid";
+    inline static const std::string GRID = "HashGrid";
 };
 
 enum class GradientMode {

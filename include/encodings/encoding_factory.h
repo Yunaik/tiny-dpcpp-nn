@@ -157,7 +157,9 @@ template <typename T> std::shared_ptr<Encoding<T>> create_encoding(const json &c
         else if (name == EncodingNames::GRID)
             encodingRegistry.registerFactory(name, std::make_unique<GridEncodingFactory<T>>());
         else
-            throw std::invalid_argument("Encoding name unknown");
+            throw std::invalid_argument("Encoding name unknown: " + name +
+                                        ". Currently supported: " + EncodingNames::IDENTITY + ", " +
+                                        EncodingNames::SPHERICALHARMONICS + ", " + EncodingNames::GRID + ".");
     }
 
     return encodingRegistry.create(config);
