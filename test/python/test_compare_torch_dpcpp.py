@@ -236,7 +236,7 @@ if __name__ == "__main__":
     # activation_func = "relu"
     output_func = "linear"
     # output_func = "sigmoid"
-    dtype = torch.bfloat16
+    dtype = torch.float16
     use_nwe = False
     use_weights_of_tinynn = False
 

@@ -9,6 +9,7 @@ from tiny_dpcpp_nn_pybind_module import (
 )
 
 MIN_BATCH_SIZE = 8  # in tiny-dpcpp-nn the smallest possible batch size is 8
+torch.set_printoptions(precision=10)
 
 
 def unpad_tensor_to_input_dim(padded_tensor, output_dim):
@@ -101,12 +102,8 @@ class _module_function(torch.autograd.Function):
 
         batch_size = input.shape[0]
         doutput = doutput * loss_scale
-
         with torch.no_grad():
-            if (
-                "encoding_config"
-                in ctx.info
-            ):
+            if "encoding_config" in ctx.info:
                 input_grad = None
 
                 if batch_size == 0:
@@ -136,7 +133,10 @@ class _module_function(torch.autograd.Function):
                 )
                 if input_grad is not None:
                     input_grad = input_grad.reshape(batch_size, -1)
+
+        print(f"Grad prescale: {grad.T}")
         grad = None if grad is None else (grad / loss_scale)
+        print(f"Grad postscale: {grad.T}")
         input_grad = None if input_grad is None else (input_grad / loss_scale)
 
         # 4 inputs to forward, so need 4 grads
@@ -157,9 +157,11 @@ class Module(torch.nn.Module):
         self.backend_param_dtype = backend_param_dtype
 
         if backend_param_dtype == torch.float16:
-            self.loss_scale = 128.0
+            self.loss_scale = 1.0
+            # self.loss_scale = 128.0
         else:
             self.loss_scale = 1.0
+        print(f"Loss scale: {self.loss_scale}")
 
         self.tnn_module = self.create_module()
         if self.tnn_module.n_params() and create_params:
@@ -173,13 +175,13 @@ class Module(torch.nn.Module):
             initial_params = self.tnn_module.initial_params(torch_params.to(device))
             # Creating the torch.nn.Parameter object with the initialized tensor
             self.params = torch.nn.Parameter(
-                initial_params.to(device), requires_grad=True
+                initial_params.to(torch.float32).to(device), requires_grad=True
             )
         elif self.tnn_module.n_params():
             initial_params = self.tnn_module.initial_params()
             # Creating the torch.nn.Parameter object with the initialized tensor
             self.params = torch.nn.Parameter(
-                initial_params.to(device), requires_grad=True
+                initial_params.to(torch.float32).to(device), requires_grad=True
             )
         else:
             print(
@@ -335,7 +337,7 @@ class Module(torch.nn.Module):
         output = _module_function.apply(
             self.tnn_module,
             padded_tensor.contiguous(),
-            self.params,
+            self.params.to(self.backend_param_dtype),
             info,
             self.loss_scale,
         )

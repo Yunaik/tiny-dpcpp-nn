@@ -484,6 +484,8 @@ template <typename T, int WIDTH> class NetworkModule : public Module {
                                         std::to_string(network_.get_output_width()));
         }
 
+        std::cout << "Torch grad_output: " << grad_output << std::endl;
+
         DeviceMatrixView<T> dL_doutput(batch_size, network_.get_output_width(), network_.get_output_width(),
                                        reinterpret_cast<T *>(grad_output.data_ptr()));
 
@@ -503,6 +505,13 @@ template <typename T, int WIDTH> class NetworkModule : public Module {
 
         network_.backward_pass(dL_doutput, net_gradients_.GetViews(), interm_bwd, interm_fwd, {}, dL_dinput);
         this->sycl_queue_.wait();
+        std::cout << "Interm_fwd" << std::endl;
+        printDeviceMatrix(interm_fwd, 128);
+        std::cout << "Interm_bwd" << std::endl;
+        printDeviceMatrix(interm_bwd, 128);
+        std::vector<T> grad_vec = net_gradients_.copy_to_host();
+
+        printVector("Grad vector", grad_vec, 256, -1);
 
         if (pack_gradient) {
             net_gradients_.Packed(net_gradients_);
@@ -570,6 +579,27 @@ template <typename T, int WIDTH> class NetworkModule : public Module {
         sycl::free(dL_dinput_ptr_, this->sycl_queue_);
         dL_dinput_ptr_ = nullptr;
         max_batch_size_ = 0;
+    }
+
+    void printDeviceMatrix(const DeviceMatricesView<T> &device_matrices_view, int line_break_every) {
+        // Calculate the total number of elements to copy from the device memory
+        size_t total_elements = device_matrices_view.nelements();
+
+        // Create a host vector to store the copied data
+        std::vector<T> host_vector(total_elements);
+
+        // Copy the data from the device to the host vector
+        this->sycl_queue_
+            .memcpy(host_vector.data(), device_matrices_view.GetMatrixPointer(0), total_elements * sizeof(T))
+            .wait();
+
+        // Print the contents of the vector
+        for (size_t i = 0; i < total_elements; ++i) {
+            std::cout << host_vector[i] << ", ";
+            // Add a newline for better readability, you can adjust the number based on expected dimensions for
+            // visualization
+            if ((i + 1) % line_break_every == 0) std::cout << "========================" << std::endl;
+        }
     }
 
   private:

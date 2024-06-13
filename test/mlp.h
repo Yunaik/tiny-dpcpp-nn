@@ -185,7 +185,7 @@ template <typename T> class MLP {
         weights.push_back(Matrix<T>(hiddenDim, hiddenDim));
 
         // initialise weights
-        double weight_val = 0.1;
+        double weight_val = 0.01;
         // linspace initialization of weights
         if (weight_init_mode == "linspace") {
             for (int i = 0; i < weights.size(); i++) {
