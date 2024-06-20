@@ -484,7 +484,7 @@ template <typename T, int WIDTH> class NetworkModule : public Module {
                                         std::to_string(network_.get_output_width()));
         }
 
-        std::cout << "Torch grad_output: " << grad_output << std::endl;
+        // std::cout << "Torch grad_output: " << grad_output << std::endl;
 
         DeviceMatrixView<T> dL_doutput(batch_size, network_.get_output_width(), network_.get_output_width(),
                                        reinterpret_cast<T *>(grad_output.data_ptr()));
@@ -505,13 +505,6 @@ template <typename T, int WIDTH> class NetworkModule : public Module {
 
         network_.backward_pass(dL_doutput, net_gradients_.GetViews(), interm_bwd, interm_fwd, {}, dL_dinput);
         this->sycl_queue_.wait();
-        std::cout << "Interm_fwd" << std::endl;
-        printDeviceMatrix(interm_fwd, 128);
-        std::cout << "Interm_bwd" << std::endl;
-        printDeviceMatrix(interm_bwd, 128);
-        std::vector<T> grad_vec = net_gradients_.copy_to_host();
-
-        printVector("Grad vector", grad_vec, 256, -1);
 
         if (pack_gradient) {
             net_gradients_.Packed(net_gradients_);

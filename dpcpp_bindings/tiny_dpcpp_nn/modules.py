@@ -127,6 +127,7 @@ class _module_function(torch.autograd.Function):
                         False,  # don't pack the grad, don't get dldinput
                     )
             else:
+                # This is Network only
                 pack_weights = True
                 input_grad, grad = ctx.native_tnn_module.bwd_no_encoding_grad(
                     doutput, pack_weights, True  # pack the grad, get dldinput
@@ -134,9 +135,9 @@ class _module_function(torch.autograd.Function):
                 if input_grad is not None:
                     input_grad = input_grad.reshape(batch_size, -1)
 
-        print(f"Grad prescale: {grad.T}")
+        # print(f"Grad prescale: {grad.T}")
         grad = None if grad is None else (grad / loss_scale)
-        print(f"Grad postscale: {grad.T}")
+        # print(f"Grad postscale: {grad.T}")
         input_grad = None if input_grad is None else (input_grad / loss_scale)
 
         # 4 inputs to forward, so need 4 grads
@@ -146,7 +147,6 @@ class _module_function(torch.autograd.Function):
 class Module(torch.nn.Module):
     def __init__(
         self,
-        create_params=True,
         device="xpu",
         input_dtype=torch.float16,
         backend_param_dtype=torch.float16,
@@ -157,27 +157,13 @@ class Module(torch.nn.Module):
         self.backend_param_dtype = backend_param_dtype
 
         if backend_param_dtype == torch.float16:
-            self.loss_scale = 1.0
-            # self.loss_scale = 128.0
+            self.loss_scale = 128.0
         else:
             self.loss_scale = 1.0
-        print(f"Loss scale: {self.loss_scale}")
 
         self.tnn_module = self.create_module()
-        if self.tnn_module.n_params() and create_params:
-            torch_params = (
-                torch.ones(self.tnn_module.n_params(), 1).to(
-                    dtype=self.backend_param_dtype
-                )
-                * 0.1
-            )
-            # Set the initial parameters based on the transformed torch_params
-            initial_params = self.tnn_module.initial_params(torch_params.to(device))
-            # Creating the torch.nn.Parameter object with the initialized tensor
-            self.params = torch.nn.Parameter(
-                initial_params.to(torch.float32).to(device), requires_grad=True
-            )
-        elif self.tnn_module.n_params():
+
+        if self.tnn_module.n_params():
             initial_params = self.tnn_module.initial_params()
             # Creating the torch.nn.Parameter object with the initialized tensor
             self.params = torch.nn.Parameter(
@@ -191,10 +177,18 @@ class Module(torch.nn.Module):
                 self.device
             )
 
-    def set_params(self, params):
-        assert isinstance(params, torch.Tensor), "Params is not a torch.Tensor"
-        if len(params.shape) > 1:
-            params = params.flatten()
+    def set_params(self, params=None):
+        if params is None:
+            # this forces the backend to use the self.params which were overwritten in python only (pointing to different backend arrays)
+            params = self.params
+        else:
+            assert isinstance(params, torch.Tensor), "Params is not a torch.Tensor"
+            if len(params.shape) > 1:
+                params = params.flatten()
+            # Set self.params to the params passed. Backend dpcpp and python seem to be different underlying memories
+            self.params = torch.nn.Parameter(
+                params.to(torch.float32).to(self.device), requires_grad=True
+            )
         self.tnn_module.set_params(params, False)
 
     def get_reshaped_params(
@@ -333,6 +327,11 @@ class Module(torch.nn.Module):
         if hasattr(self, "encoding_config"):
             # added for NWE and encoding
             info.update({"encoding_config": self.encoding_config})
+
+        self.set_params(
+            None
+        )  # Setting backend Swiftnet weights to the ones of self.params
+        # TODO: this behaviour changes for encoding.
 
         output = _module_function.apply(
             self.tnn_module,

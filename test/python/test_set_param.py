@@ -35,10 +35,17 @@ network = tcnn.Network(
 assert network.params.dtype == torch.float32
 
 val = 0.123
-network.set_params(val * torch.ones(WIDTH * WIDTH * 4, 1).to(device))
+param_vals = val * torch.ones(WIDTH * WIDTH * 4, 1).to(device)
 
-print(f"Parameters 1: {network.params}")
-print(f"Parameters 2: {network.params.data}")
+network.set_params(param_vals)
+
+# Using torch.isclose to compare param_vals with network.params and network.params.data
+is_close_params = torch.isclose(param_vals, network.params)
+is_close_params_data = torch.isclose(param_vals, network.params.data)
+
+print(f"is_close_params: {is_close_params.all()}")
+print(f"is_close_params_data: {is_close_params_data.all()}")
+
 print("Input")
 print(x[0:WIDTH, 0])
 y = network(x)
