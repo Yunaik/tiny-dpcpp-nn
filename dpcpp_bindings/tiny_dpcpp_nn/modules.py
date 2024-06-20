@@ -146,7 +146,7 @@ class _module_function(torch.autograd.Function):
 class Module(torch.nn.Module):
     def __init__(
         self,
-        create_params=False,
+        create_params=True,
         device="xpu",
         input_dtype=torch.float16,
         backend_param_dtype=torch.float16,
