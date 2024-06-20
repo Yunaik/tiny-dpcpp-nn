@@ -160,7 +160,7 @@ def test_encoding():
 
     # Initialize the MLP
     encoding_config = {
-        "otype": "Grid",
+        "otype": "HashGrid",
         "type": "Hash",
         "n_levels": 16,
         "n_features_per_level": 2,
@@ -283,7 +283,7 @@ def test_network_with_encoding_all(dtype):
     }
 
     grid_config = {
-        "otype": "Grid",
+        "otype": "HashGrid",
         "type": "Hash",
         "n_levels": 16,
         "n_features_per_level": 2,
@@ -335,12 +335,12 @@ def test_network_with_encoding_all(dtype):
 
 
 if __name__ == "__main__":
-    dtype = torch.bfloat16
-    # dtype = torch.float16
+    # dtype = torch.bfloat16
+    dtype = torch.float16
     print("Testing network")
     test_network(dtype)
 
-    print("Testing encoding")
-    test_encoding()
+    # print("Testing encoding")
+    # test_encoding()
 
-    test_network_with_encoding_all(dtype)
+    # test_network_with_encoding_all(dtype)

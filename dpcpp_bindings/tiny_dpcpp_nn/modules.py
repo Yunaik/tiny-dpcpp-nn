@@ -167,7 +167,7 @@ class Module(torch.nn.Module):
             initial_params = self.tnn_module.initial_params()
             # Creating the torch.nn.Parameter object with the initialized tensor
             self.params = torch.nn.Parameter(
-                initial_params.to(torch.float32).to(device), requires_grad=True
+                initial_params.to(device), requires_grad=True
             )
         else:
             print(
@@ -186,9 +186,7 @@ class Module(torch.nn.Module):
             if len(params.shape) > 1:
                 params = params.flatten()
             # Set self.params to the params passed. Backend dpcpp and python seem to be different underlying memories
-            self.params = torch.nn.Parameter(
-                params.to(torch.float32).to(self.device), requires_grad=True
-            )
+            self.params = torch.nn.Parameter(params.to(self.device), requires_grad=True)
         self.tnn_module.set_params(params, False)
 
     def get_reshaped_params(
@@ -336,7 +334,7 @@ class Module(torch.nn.Module):
         output = _module_function.apply(
             self.tnn_module,
             padded_tensor.contiguous(),
-            self.params.to(self.backend_param_dtype),
+            self.params,
             info,
             self.loss_scale,
         )

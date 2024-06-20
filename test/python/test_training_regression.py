@@ -9,13 +9,13 @@ torch.set_printoptions(precision=10)
 CALC_DPCPP = True
 CALC_REF = True
 
-# USE_ADAM = True
-USE_ADAM = False
+USE_ADAM = True
+# USE_ADAM = False
 
-DTYPE = torch.bfloat16
+DTYPE = torch.float16
 USE_NWE = False
 WIDTH = 16
-num_epochs = 5
+num_epochs = 100
 
 
 class SimpleSGDOptimizer(torch.optim.Optimizer):

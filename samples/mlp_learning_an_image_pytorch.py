@@ -110,7 +110,7 @@ def get_args():
         "n_steps",
         nargs="?",
         type=int,
-        default=1001,
+        default=101,
         help="Number of training steps",
     )
     parser.add_argument(
