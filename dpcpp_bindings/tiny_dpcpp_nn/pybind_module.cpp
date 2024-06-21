@@ -8,27 +8,22 @@ template <typename T> struct torch_type {};
 
 template <> struct torch_type<int> {
     static const auto dtype = torch::kInt32;
-    typedef int type;
 };
 
 template <> struct torch_type<double> {
     static const auto dtype = torch::kFloat64;
-    typedef double type;
 };
 
 template <> struct torch_type<float> {
     static const auto dtype = torch::kFloat32;
-    typedef float type;
 };
 
 template <> struct torch_type<fp16> {
     static const auto dtype = c10::ScalarType::Half;
-    typedef at::Half type;
 };
 
 template <> struct torch_type<bf16> {
     static const auto dtype = c10::ScalarType::BFloat16;
-    typedef at::BFloat16 type;
 };
 // Define a simple neural network class with one weight tensor
 template <typename T> class SimpleNN {
