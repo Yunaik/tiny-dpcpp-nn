@@ -9,12 +9,14 @@ BATCH_SIZE = 2**7
 
 WIDTH = 64
 
-TRAIN_EPOCHS = 1000  # this is high to ensure that all tests pass (some are fast < 100 and some are slow)
+TRAIN_EPOCHS = 20  # this is high to ensure that all tests pass (some are fast < 100 and some are slow)
 
 PRINT_PROGRESS = True
 
 # dtypes = [torch.float16, torch.bfloat16]
 dtypes = [torch.bfloat16]
+
+USE_ADAM = True
 
 
 class SimpleSGDOptimizer(torch.optim.Optimizer):
@@ -45,9 +47,17 @@ class SimpleSGDOptimizer(torch.optim.Optimizer):
                 #     print("dpcpp param: ")
                 #     param_last_layer_reshaped = p.data[-256:, 0].reshape(16, 16)
                 #     print(param_last_layer_reshaped)
-
+                print(f"Grad: {grad}, sum: {grad.sum().sum()}")
+                print(f"p.data: {p.data}, sum: {p.data.sum().sum():.10f}")
+                print(f"lr: {group['lr']}")
+                print(
+                    f"val: {group['lr']* grad}, sum: {(group['lr']* grad).sum().sum()}"
+                )
                 p.data = p.data - group["lr"] * grad
-
+                # tmp = p.data - group["lr"] * grad
+                print(f"After p.data: {p.data}, sum: {p.data.sum().sum():.10f}")
+                # print(f"After p.data: {tmp}, sum: {tmp.sum().sum():.10f}")
+                # print("===========================")
                 grad_sum += torch.abs(grad).sum()
                 param_sum += torch.abs(p.data).sum()
         print(f"{self.name} Grad sum: {grad_sum}")
@@ -63,8 +73,11 @@ def generate_data(num_samples, input_size, output_size):
 
 def train_mlp(model, data, labels, epochs, learning_rate):
     criterion = nn.CrossEntropyLoss()
-    # optimizer = SimpleSGDOptimizer(model.parameters(), lr=learning_rate)
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    if USE_ADAM:
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    else:
+        optimizer = SimpleSGDOptimizer(model.parameters(), lr=learning_rate)
 
     best_loss = float("inf")
     loss_stagnant_counter = 0
@@ -87,7 +100,7 @@ def train_mlp(model, data, labels, epochs, learning_rate):
             print("Loss hasn't improved for 50 epochs. Training aborted.")
             break
 
-        if PRINT_PROGRESS and (epoch + 1) % 10 == 0:
+        if PRINT_PROGRESS and (epoch + 1) % 1 == 0:
             print(f"Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}")
 
 
@@ -335,8 +348,8 @@ def test_network_with_encoding_all(dtype):
 
 
 if __name__ == "__main__":
-    # dtype = torch.bfloat16
-    dtype = torch.float16
+    dtype = torch.bfloat16
+    # dtype = torch.float16
     print("Testing network")
     test_network(dtype)
 

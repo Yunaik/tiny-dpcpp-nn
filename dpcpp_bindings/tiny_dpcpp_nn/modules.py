@@ -166,6 +166,9 @@ class Module(torch.nn.Module):
         if self.tnn_module.n_params():
             initial_params = self.tnn_module.initial_params()
             # Creating the torch.nn.Parameter object with the initialized tensor
+            # self.params = torch.nn.Parameter(
+            #     initial_params.detach().clone().to(device), requires_grad=True
+            # )
             self.params = torch.nn.Parameter(
                 initial_params.to(device), requires_grad=True
             )
@@ -326,10 +329,10 @@ class Module(torch.nn.Module):
             # added for NWE and encoding
             info.update({"encoding_config": self.encoding_config})
 
-        self.set_params(
-            None
-        )  # Setting backend Swiftnet weights to the ones of self.params
-        # TODO: this behaviour changes for encoding.
+        # self.set_params(
+        #     None
+        # )  # Setting backend Swiftnet weights to the ones of self.params
+        # # TODO: this behaviour changes for encoding.
 
         output = _module_function.apply(
             self.tnn_module,
