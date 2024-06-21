@@ -3,17 +3,20 @@ import torch.optim as optim
 import intel_extension_for_pytorch
 from tiny_dpcpp_nn_pybind_module import SimpleNN
 
-DTYPE = torch.bfloat16
+# Need to manually set and check it aligns with pybind_module.cpp
+DTYPE = torch.float
+DEVICE = "xpu"
 
 
 class Module(torch.nn.Module):
-    def __init__(self, device="cpu"):
+    def __init__(self, device=DEVICE):
         super(Module, self).__init__()
         self.network = SimpleNN()
         self.device = device
         initial_params = self.network.get_weight()
         self.params = torch.nn.Parameter(initial_params, requires_grad=True)
-        print(f"Dtype: {self.params.dtype}")
+        print(f"Params dtype: {self.params.dtype}")
+        print(f"Params device: {self.params.device}")
 
     def forward(self, x):
         return self.params
@@ -47,8 +50,8 @@ if __name__ == "__main__":
     # Training loop (just a few iterations for demonstration)
     for epoch in range(100):
         # Generate some dummy input and target
-        input_data = torch.tensor([2.0], dtype=DTYPE)
-        target = torch.tensor([4.0], dtype=DTYPE)
+        input_data = torch.tensor([2.0], dtype=DTYPE, device=DEVICE)
+        target = torch.tensor([4.0], dtype=DTYPE, device=DEVICE)
 
         # Forward pass: compute predicted y by passing x to the model
         output = net(input_data)
@@ -56,6 +59,7 @@ if __name__ == "__main__":
             output == net.network.get_weight()
         ), "Output and underlying weight not the same"
         # Compute and print loss
+
         loss = manual_mse_loss(output, target)
         print(f"Epoch {epoch}: Loss = {loss.item()}")
 

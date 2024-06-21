@@ -34,10 +34,23 @@ template <> struct torch_type<bf16> {
 template <typename T> class SimpleNN {
   public:
     explicit SimpleNN() {
-        T initial_weight = 1.0;
-        const torch::TensorOptions &options = torch::TensorOptions().dtype(torch_type<T>::dtype).device(torch::kCPU);
+        // T initial_weight = 1.0;
+        // const torch::TensorOptions &options = torch::TensorOptions().dtype(torch_type<T>::dtype).device(torch::kCPU);
 
-        weight = torch::from_blob(&initial_weight, {1}, options).clone();
+        // weight = torch::from_blob(&initial_weight, {1}, options).clone();
+        // Allocate memory on the SYCL queue for an array of size 1
+        sycl::queue q; // Replace with your desired SYCL device selector
+        T *device_ptr = static_cast<T *>(sycl::malloc_device(sizeof(T), q));
+
+        // Check if allocation was successful
+        if (!device_ptr) {
+            throw std::runtime_error("Failed to allocate memory on SYCL device.");
+        }
+        // Initialize the memory with the provided value
+        T val = 1.0;
+        q.memcpy(device_ptr, &val, sizeof(T)).wait();
+
+        weight = xpu::dpcpp::fromUSM(device_ptr, torch_type<T>::dtype, {1});
     }
     torch::Tensor get_weight() { return weight; }
 
@@ -48,5 +61,5 @@ template <typename T> class SimpleNN {
 
 // Binding code using Pybind11
 PYBIND11_MODULE(tiny_dpcpp_nn_pybind_module, m) {
-    py::class_<SimpleNN<bf16>>(m, "SimpleNN").def(py::init<>()).def("get_weight", &SimpleNN<bf16>::get_weight);
+    py::class_<SimpleNN<float>>(m, "SimpleNN").def(py::init<>()).def("get_weight", &SimpleNN<float>::get_weight);
 }
