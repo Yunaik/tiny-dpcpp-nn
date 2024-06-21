@@ -61,5 +61,5 @@ template <typename T> class SimpleNN {
 
 // Binding code using Pybind11
 PYBIND11_MODULE(tiny_dpcpp_nn_pybind_module, m) {
-    py::class_<SimpleNN<float>>(m, "SimpleNN").def(py::init<>()).def("get_weight", &SimpleNN<float>::get_weight);
+    py::class_<SimpleNN<fp16>>(m, "SimpleNN").def(py::init<>()).def("get_weight", &SimpleNN<fp16>::get_weight);
 }

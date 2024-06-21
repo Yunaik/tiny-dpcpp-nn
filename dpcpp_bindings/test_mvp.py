@@ -4,7 +4,7 @@ import intel_extension_for_pytorch
 from tiny_dpcpp_nn_pybind_module import SimpleNN
 
 # Need to manually set and check it aligns with pybind_module.cpp
-DTYPE = torch.float
+DTYPE = torch.float16
 DEVICE = "xpu"
 
 
