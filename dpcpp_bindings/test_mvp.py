@@ -14,7 +14,7 @@ class Module(torch.nn.Module):
         # self.params = torch.nn.Parameter(
         #     initial_params.detach().clone().to(device), requires_grad=True
         # )
-        self.params = torch.nn.Parameter(initial_params.to(device), requires_grad=True)
+        self.params = torch.nn.Parameter(initial_params, requires_grad=True)
 
     def forward(self, x):
         return self.params
@@ -24,12 +24,13 @@ if __name__ == "__main__":
     # Create an instance of SimpleNN with initial weight 1.0
     net = Module()
     print(f"Net weight: {net.params.data}")
-
+    net.params.data.copy_(torch.ones((1,), dtype=torch.float) * 3)
+    print(f"Net weight after: {net.params.data}/{net.network.get_weight()}")
     # Define a simple loss function (mean squared error)
     loss_fn = torch.nn.MSELoss()
 
     # Create an optimizer (SGD in this case)
-    optimizer = optim.SGD(net.parameters(), lr=0.1)
+    optimizer = optim.Adam(net.parameters(), lr=0.1)
 
     # Training loop (just a few iterations for demonstration)
     for epoch in range(30):
@@ -39,10 +40,11 @@ if __name__ == "__main__":
 
         # Forward pass: compute predicted y by passing x to the model
         output = net(input_data)
-
+        print(f"Output: {output}, should: {net.network.get_weight()}")
         # Compute and print loss
         loss = loss_fn(output, target)
         print(f"Epoch {epoch}: Loss = {loss.item()}")
+        print("========================================")
 
         # Zero the gradients before running the backward pass
         optimizer.zero_grad()
