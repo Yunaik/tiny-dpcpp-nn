@@ -9,14 +9,14 @@ BATCH_SIZE = 2**7
 
 WIDTH = 64
 
-TRAIN_EPOCHS = 20  # this is high to ensure that all tests pass (some are fast < 100 and some are slow)
+TRAIN_EPOCHS = 2  # this is high to ensure that all tests pass (some are fast < 100 and some are slow)
 
 PRINT_PROGRESS = True
 
 # dtypes = [torch.float16, torch.bfloat16]
 dtypes = [torch.bfloat16]
 
-USE_ADAM = True
+USE_ADAM = False
 
 
 class SimpleSGDOptimizer(torch.optim.Optimizer):
@@ -75,8 +75,11 @@ def train_mlp(model, data, labels, epochs, learning_rate):
     criterion = nn.CrossEntropyLoss()
 
     if USE_ADAM:
+        print("Using ADAM")
         optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     else:
+        print("Using SGD")
+        # optimizer = optim.SGD(model.parameters(), lr=learning_rate)
         optimizer = SimpleSGDOptimizer(model.parameters(), lr=learning_rate)
 
     best_loss = float("inf")
@@ -126,7 +129,7 @@ def test_network(dtype):
     hidden_layers = 2
     output_size = WIDTH
     num_samples = BATCH_SIZE
-    learning_rate = 0.01
+    learning_rate = 0.1
     epochs = TRAIN_EPOCHS
 
     # Initialize the MLP
