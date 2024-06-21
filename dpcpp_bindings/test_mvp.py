@@ -3,6 +3,8 @@ import torch.optim as optim
 import intel_extension_for_pytorch
 from tiny_dpcpp_nn_pybind_module import SimpleNN
 
+DTYPE = torch.bfloat16
+
 
 class Module(torch.nn.Module):
     def __init__(self, device="cpu"):
@@ -10,41 +12,52 @@ class Module(torch.nn.Module):
         self.network = SimpleNN()
         self.device = device
         initial_params = self.network.get_weight()
-        # Creating the torch.nn.Parameter object with the initialized tensor
-        # self.params = torch.nn.Parameter(
-        #     initial_params.detach().clone().to(device), requires_grad=True
-        # )
         self.params = torch.nn.Parameter(initial_params, requires_grad=True)
+        print(f"Dtype: {self.params.dtype}")
 
     def forward(self, x):
         return self.params
+
+
+def manual_mse_loss(output, target):
+    """
+    Computes the Mean Squared Error (MSE) loss between output and target tensors.
+
+    Args:
+    - output (torch.Tensor): Predicted output tensor from the model.
+    - target (torch.Tensor): Target tensor with true values.
+
+    Returns:
+    - loss (torch.Tensor): Computed MSE loss tensor.
+    """
+    loss = torch.mean((output - target) ** 2)
+    return loss
 
 
 if __name__ == "__main__":
     # Create an instance of SimpleNN with initial weight 1.0
     net = Module()
     print(f"Net weight: {net.params.data}")
-    net.params.data.copy_(torch.ones((1,), dtype=torch.float) * 3)
+    net.params.data.copy_(torch.ones((1,), dtype=DTYPE) * 3)
     print(f"Net weight after: {net.params.data}/{net.network.get_weight()}")
-    # Define a simple loss function (mean squared error)
-    loss_fn = torch.nn.MSELoss()
 
     # Create an optimizer (SGD in this case)
-    optimizer = optim.Adam(net.parameters(), lr=0.1)
+    optimizer = optim.SGD(net.parameters(), lr=0.1)
 
     # Training loop (just a few iterations for demonstration)
-    for epoch in range(30):
+    for epoch in range(100):
         # Generate some dummy input and target
-        input_data = torch.tensor([2.0], dtype=torch.float32)
-        target = torch.tensor([4.0], dtype=torch.float32)
+        input_data = torch.tensor([2.0], dtype=DTYPE)
+        target = torch.tensor([4.0], dtype=DTYPE)
 
         # Forward pass: compute predicted y by passing x to the model
         output = net(input_data)
-        print(f"Output: {output}, should: {net.network.get_weight()}")
+        assert (
+            output == net.network.get_weight()
+        ), "Output and underlying weight not the same"
         # Compute and print loss
-        loss = loss_fn(output, target)
+        loss = manual_mse_loss(output, target)
         print(f"Epoch {epoch}: Loss = {loss.item()}")
-        print("========================================")
 
         # Zero the gradients before running the backward pass
         optimizer.zero_grad()
@@ -57,3 +70,4 @@ if __name__ == "__main__":
 
     # Print final weight after training
     print(f"Final weight: {net.params.data} (should be: {target})")
+    assert torch.isclose(net.params.data, target, atol=1e-1)

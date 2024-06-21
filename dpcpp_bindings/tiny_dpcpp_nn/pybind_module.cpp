@@ -31,14 +31,13 @@ template <> struct torch_type<bf16> {
     typedef at::BFloat16 type;
 };
 // Define a simple neural network class with one weight tensor
-class SimpleNN {
+template <typename T> class SimpleNN {
   public:
     explicit SimpleNN() {
-        float initial_weight = 1.0;
-        const torch::TensorOptions &options =
-            torch::TensorOptions().dtype(torch_type<float>::dtype).device(torch::kCPU);
+        T initial_weight = 1.0;
+        const torch::TensorOptions &options = torch::TensorOptions().dtype(torch_type<T>::dtype).device(torch::kCPU);
 
-        weight = torch::from_blob(&initial_weight, {1}, torch::kFloat32).clone();
+        weight = torch::from_blob(&initial_weight, {1}, options).clone();
     }
     torch::Tensor get_weight() { return weight; }
 
@@ -49,5 +48,5 @@ class SimpleNN {
 
 // Binding code using Pybind11
 PYBIND11_MODULE(tiny_dpcpp_nn_pybind_module, m) {
-    py::class_<SimpleNN>(m, "SimpleNN").def(py::init<>()).def("get_weight", &SimpleNN::get_weight);
+    py::class_<SimpleNN<bf16>>(m, "SimpleNN").def(py::init<>()).def("get_weight", &SimpleNN<bf16>::get_weight);
 }
