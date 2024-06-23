@@ -62,6 +62,7 @@ class Module {
     virtual torch::Tensor initialize_params() = 0;
     virtual torch::Tensor initialize_params(torch::Tensor &tensor) = 0;
     virtual void set_params(torch::Tensor &tensor, bool weights_are_packed) = 0;
+    virtual torch::Tensor get_params() = 0;
     virtual torch::Tensor forward_pass(torch::Tensor input_tensor) = 0;
     virtual std::tuple<torch::Tensor, torch::Tensor>
     backward_pass(torch::Tensor input_tensor, torch::Tensor input_from_fwd, bool pack_gradient, bool get_dl_dinput) = 0;
@@ -346,13 +347,7 @@ template <typename T> class EncodingModule : public Module {
         return {torch::Tensor(), convertDeviceMatrixToTorchTensor(*gradients_)};
     }
 
-    torch::Tensor initialize_params() override {
-        if (params_full_precision_ptr_ != nullptr) {
-            return convertDeviceMatrixToTorchTensor<T>(*params_full_precision_ptr_);
-        } else {
-            return torch::empty({0});
-        }
-    }
+    torch::Tensor initialize_params() override { return get_params(); }
 
     torch::Tensor initialize_params(torch::Tensor &tensor) override {
         if (params_full_precision_ptr_ != nullptr) {
@@ -366,6 +361,14 @@ template <typename T> class EncodingModule : public Module {
             throw std::runtime_error("params_full_precision_ptr was not set");
         }
         params_full_precision_ptr_->copy_from_device(params.data_ptr<T>());
+    }
+
+    torch::Tensor get_params() override {
+        if (params_full_precision_ptr_ != nullptr) {
+            return convertDeviceMatrixToTorchTensor<T>(*params_full_precision_ptr_);
+        } else {
+            return torch::empty({0});
+        }
     }
 
     size_t n_params() override { return encoding_->n_params(); }
@@ -515,10 +518,9 @@ template <typename T, int WIDTH> class NetworkModule : public Module {
                                                 {static_cast<long>(net_gradients_.nelements()), static_cast<long>(1)})};
     }
 
-    torch::Tensor initialize_params() override {
-        return convertDeviceMatricesToTorchTensor(network_.get_weights_matrices());
-    }
+    torch::Tensor initialize_params() override { return get_params(); }
 
+    torch::Tensor get_params() override { return convertDeviceMatricesToTorchTensor(network_.get_weights_matrices()); }
     torch::Tensor initialize_params(torch::Tensor &tensor) override {
         set_params(tensor, false);
         return initialize_params();
@@ -786,7 +788,9 @@ template <typename T_enc, typename T_net, int WIDTH> class NetworkWithEncodingMo
                                     {static_cast<long>(all_gradients_->size()), static_cast<long>(1)})};
     }
 
-    torch::Tensor initialize_params() override {
+    torch::Tensor initialize_params() override { return get_params(); }
+
+    torch::Tensor get_params() override {
         if (params_full_precision_ptr_ == nullptr) {
             all_params_ = std::make_unique<DeviceMem<T_enc>>(
                 network_->get_network()->get_weights_matrices().nelements(), this->sycl_queue_);
@@ -801,7 +805,6 @@ template <typename T_enc, typename T_net, int WIDTH> class NetworkWithEncodingMo
         }
         return convertDeviceMemToTorchTensor(*all_params_);
     }
-
     torch::Tensor initialize_params(torch::Tensor &tensor) override {
         set_params(tensor, false);
         return initialize_params();

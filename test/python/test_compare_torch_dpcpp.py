@@ -238,7 +238,7 @@ if __name__ == "__main__":
     # output_func = "sigmoid"
     dtype = torch.float16
     use_nwe = False
-    use_weights_of_tinynn = False
+    use_weights_of_tinynn = True
 
     test_fwd(
         input_width,
