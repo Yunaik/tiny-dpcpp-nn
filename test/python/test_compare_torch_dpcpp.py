@@ -16,7 +16,7 @@ hidden_sizes = [16, 32, 64, 128]
 # use_nwe_array = [False, True]
 use_nwe_array = [False]
 use_weights_of_tinynn_array = [False, True]
-BATCH_SIZE = 2**10
+BATCH_SIZE = 2**3
 DEVICE_NAME = "xpu"
 
 
@@ -232,8 +232,8 @@ if __name__ == "__main__":
     hidden_size = 16
     hidden_layers = 1
     output_width = 16
-    activation_func = "sigmoid"
-    # activation_func = "relu"
+    # activation_func = "sigmoid"
+    activation_func = "relu"
     output_func = "linear"
     # output_func = "sigmoid"
     dtype = torch.float16

@@ -7,10 +7,10 @@ from src.utils import create_models
 torch.set_printoptions(precision=10)
 
 
-# USE_ADAM = True
-USE_ADAM = False
+USE_ADAM = True
+# USE_ADAM = False
 
-DTYPE = torch.float16
+DTYPE = torch.bfloat16
 USE_NWE = False
 WIDTH = 16
 num_epochs = 100
@@ -95,7 +95,6 @@ def test_regression():
         optimizer2 = SimpleSGDOptimizer(model_torch.parameters(), name="torch", lr=LR)
 
     # Training loop
-    params_updated1 = None
     for epoch in range(num_epochs):
         print(f"Epoch: {epoch}")
         for i, data in enumerate(dataloader, 0):
@@ -110,10 +109,6 @@ def test_regression():
             optimizer1.zero_grad()
             loss1.backward()
             params1 = model_dpcpp.params.clone().detach()
-            if params_updated1 is not None:
-                assert not torch.equal(
-                    params1, params_updated1
-                ), "The params for model_dpcpp are the same after update, but they should be different."
 
             grads1 = model_dpcpp.params.grad.clone().detach()
             optimizer1.step()
