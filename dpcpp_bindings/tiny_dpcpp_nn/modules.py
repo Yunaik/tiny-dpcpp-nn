@@ -165,10 +165,6 @@ class Module(torch.nn.Module):
 
         if self.tnn_module.n_params():
             initial_params = self.tnn_module.initial_params()
-            # Creating the torch.nn.Parameter object with the initialized tensor
-            # self.params = torch.nn.Parameter(
-            #     initial_params.detach().clone().to(device), requires_grad=True
-            # )
             self.params = torch.nn.Parameter(initial_params, requires_grad=True)
         else:
             print(
