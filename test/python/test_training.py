@@ -1,24 +1,29 @@
-import pytest
 import torch
-import torch.nn as nn
-import torch.optim as optim
+import pytest
 import intel_extension_for_pytorch
+from torch.utils.data import DataLoader, TensorDataset
+import matplotlib.pyplot as plt
+from src.utils import create_models
 from tiny_dpcpp_nn import Network, Encoding, NetworkWithInputEncoding
 
+torch.set_printoptions(precision=10)
+
+optimisers = ["adam", "sgd"]
+dtypes = [torch.bfloat16]
+# dtypes = [torch.float16, torch.bfloat16]
+TRAIN_EPOCHS = 10000  # this is high to ensure that all tests pass (some are fast < 100 and some are slow)
+
+USE_NWE = False
+WIDTH = 16
+num_epochs = 100
+DEVICE = "xpu"
+
 BATCH_SIZE = 2**7
-
-WIDTH = 64
-
-TRAIN_EPOCHS = 1000  # this is high to ensure that all tests pass (some are fast < 100 and some are slow)
-
+LR = 1e-3
 PRINT_PROGRESS = True
 
-# dtypes = [torch.float16, torch.bfloat16]
-dtypes = [torch.bfloat16]
 
-USE_ADAM = False
-
-
+# Self defined SGD for debugging purposes
 class SimpleSGDOptimizer(torch.optim.Optimizer):
     def __init__(self, params, name="", lr=0.01):
         if lr < 0.0:
@@ -32,56 +37,169 @@ class SimpleSGDOptimizer(torch.optim.Optimizer):
         loss = None
         if closure is not None:
             loss = closure()
-        grad_sum = 0.0
-        param_sum = 0.0
         for group in self.param_groups:
             for idx, p in enumerate(group["params"]):
                 if p.grad is None:
                     print("p.grad is none")
                     continue
                 grad = p.grad.data
-                # if grad.shape[1] == 1:
-                #     print("dpcpp grad: ")
-                #     grad_last_layer_reshaped = grad[-256:, 0].reshape(16, 16)
-                #     print(grad_last_layer_reshaped)
-                #     print("dpcpp param: ")
-                #     param_last_layer_reshaped = p.data[-256:, 0].reshape(16, 16)
-                #     print(param_last_layer_reshaped)
-                # print(f"Grad: {grad}, sum: {grad.sum().sum()}")
-                # print(f"p.data: {p.data}, sum: {p.data.sum().sum():.10f}")
-                # print(f"lr: {group['lr']}")
-                # print(
-                #     f"val: {group['lr']* grad}, sum: {(group['lr']* grad).sum().sum()}"
-                # )
-                # p.data.copy_(p.data - group["lr"] * grad)
-                p.data = p.data - group["lr"] * grad
-                # tmp = p.data - group["lr"] * grad
-                # print(f"After p.data: {p.data}, sum: {p.data.sum().sum():.10f}")
-                # print(f"After p.data: {tmp}, sum: {tmp.sum().sum():.10f}")
-                # print("===========================")
-                grad_sum += torch.abs(grad).sum()
-                param_sum += torch.abs(p.data).sum()
-        # print(f"{self.name} Grad sum: {grad_sum}")
-        # print(f"{self.name} p.data sum: {param_sum}")
+
+                p.data.copy_(p.data - group["lr"] * grad)
+
         return loss
 
 
+# Define a simple linear function for the dataset
+def true_function(x):
+    return 0.5 * x
+
+
+# Test grads over multiple iterations
+@pytest.mark.parametrize(
+    "dtype, optimiser",
+    [(dtype, optimiser) for dtype in dtypes for optimiser in optimisers],
+)
+def test_regression(dtype, optimiser):
+    # Create a synthetic dataset based on the true function
+    input_size = WIDTH
+    output_size = 1
+    num_samples = 2**3
+    batch_size = 2**3
+
+    # inputs
+    # inputs_single = torch.linspace(-1, 1, steps=num_samples)
+    inputs_single = torch.ones(num_samples)
+    inputs_training = inputs_single.repeat(input_size, 1).T
+
+    # Corresponding labels with some noise
+    noise = torch.randn(num_samples, output_size) * 0.0
+
+    labels_training = true_function(inputs_training) + noise
+    # Create a DataLoader instance for batch processing
+    dataset = TensorDataset(inputs_training, labels_training)
+    dataloader = DataLoader(
+        dataset, batch_size=batch_size, shuffle=False
+    )  # if we shuffle, the loss is not identical
+
+    # Instantiate the network
+    model_dpcpp, model_torch = create_models(
+        input_size,
+        [WIDTH],
+        output_size,
+        "relu",
+        "linear",
+        use_nwe=USE_NWE,
+        input_dtype=torch.float if USE_NWE else dtype,
+        backend_param_dtype=dtype,
+        use_weights_of_tinynn=True,
+    )
+
+    def criterion(y_pred, y_true):
+        return ((y_pred - y_true) ** 2).mean()
+
+    if optimiser == "adam":
+        optimizer1 = torch.optim.Adam(model_dpcpp.parameters(), lr=LR)
+        optimizer2 = torch.optim.Adam(model_torch.parameters(), lr=LR)
+    elif optimiser == "sgd":
+        optimizer1 = SimpleSGDOptimizer(model_dpcpp.parameters(), name="dpcpp", lr=LR)
+        optimizer2 = SimpleSGDOptimizer(model_torch.parameters(), name="torch", lr=LR)
+    else:
+        raise NotImplementedError(f"{optimiser} not implemented as optimisers")
+
+    # Training loop
+    for epoch in range(num_epochs):
+        print(f"Epoch: {epoch}")
+        for i, data in enumerate(dataloader, 0):
+            inputs, labels = data
+
+            # DPCPP
+            inputs1 = inputs.clone().to(DEVICE).to(dtype)
+            labels1 = labels.clone().to(DEVICE).to(dtype)
+            # Forward pass
+            outputs1 = model_dpcpp(inputs1)
+            loss1 = criterion(outputs1, labels1)
+            optimizer1.zero_grad()
+            loss1.backward()
+            params1 = model_dpcpp.params.clone().detach()
+
+            grads1 = model_dpcpp.params.grad.clone().detach()
+            optimizer1.step()
+            params_updated1 = model_dpcpp.params.clone().detach()
+            assert not torch.equal(
+                params1, params_updated1
+            ), "The params for model_dpcpp are the same after update, but they should be different."
+
+            # Torch
+            inputs2 = inputs.clone().to(DEVICE).to(dtype)
+            labels2 = labels.clone().to(DEVICE).to(dtype)
+            outputs2 = model_torch(inputs2)
+            loss2 = criterion(outputs2, labels2)
+            optimizer2.zero_grad()
+            loss2.backward()
+            params2 = model_torch.get_all_weights()
+            grads2 = model_torch.get_all_grads()
+            optimizer2.step()
+            params_updated2 = model_torch.get_all_weights()
+
+            assert not torch.equal(
+                params2, params_updated2
+            ), "The params for model_dpcpp are the same after update, but they should be different."
+
+            # Assertions
+            assert (
+                params1.dtype == params2.dtype
+            ), f"Params not same dtype: {params1.dtype}, {params2.dtype}"
+            assert torch.isclose(
+                inputs1, inputs2
+            ).all(), f"Inputs not close with sums: {abs(inputs1).sum()}, {abs(inputs2).sum()}"
+            assert torch.isclose(
+                outputs1, outputs2
+            ).all(), f"Outputs not close with sums: {abs(outputs1).sum()}, {abs(outputs2).sum()}"
+            assert torch.isclose(
+                labels1, labels2
+            ).all(), f"Labels not close with sums: {abs(labels1).sum()}, {abs(labels2).sum()}"
+            assert torch.isclose(
+                loss1, loss2
+            ).all(), f"Loss not close with sums: {loss1.item()}, {loss2.item()}"
+            assert torch.isclose(
+                abs(params1).sum(), abs(params2).sum()
+            ), f"Params before not close with sums: {abs(params1).sum()}, {abs(params2).sum()}"
+
+            assert torch.isclose(
+                abs(grads1).sum(), abs(grads2).sum()
+            ), f"Grads not close with sums: {abs(grads1).sum()}, {abs(grads2).sum()}"
+
+            assert torch.isclose(
+                abs(params_updated1).sum(), abs(params_updated2).sum()
+            ), f"Params after not close with sums: {abs(params_updated1).sum()}, {abs(params_updated2).sum()}"
+
+        print(f"Epoch {epoch}, Losses (dpcpp/torch): { loss1.item()}/{ loss2.item()}")
+        print(
+            "========================================================================"
+        )
+
+    print("Finished Training")
+
+
+# Testing classification and convergence of all Network/NetworkWithEncodings
 def generate_data(num_samples, input_size, output_size):
     X = torch.randn(num_samples, input_size).to("xpu")
     y = torch.randint(low=0, high=output_size, size=(num_samples,)).to("xpu")
     return X, y
 
 
-def train_mlp(model, data, labels, epochs, learning_rate):
-    criterion = nn.CrossEntropyLoss()
+def train_mlp(model, data, labels, epochs, learning_rate, optimiser):
+    criterion = torch.nn.CrossEntropyLoss()
 
-    if USE_ADAM:
+    if optimiser == "adam":
         print("Using ADAM")
-        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    else:
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    elif optimiser == "sgd":
         print("Using SGD")
         # optimizer = optim.SGD(model.parameters(), lr=learning_rate)
         optimizer = SimpleSGDOptimizer(model.parameters(), lr=learning_rate)
+    else:
+        raise NotImplementedError(f"{optimiser} not implemented.")
 
     best_loss = float("inf")
     loss_stagnant_counter = 0
@@ -136,10 +254,10 @@ def evaluate(model, data, labels):
 
 
 @pytest.mark.parametrize(
-    "dtype",
-    [dtype for dtype in dtypes],
+    "dtype, optimiser",
+    [(dtype, optimiser) for dtype in dtypes for optimiser in optimisers],
 )
-def test_network(dtype):
+def test_network(dtype, optimiser):
     # Test network
     # Hyperparameters
     input_size = WIDTH
@@ -175,7 +293,7 @@ def test_network(dtype):
     )
 
     # Train the MLP
-    train_mlp(mlp, X, y, epochs, learning_rate)
+    train_mlp(mlp, X, y, epochs, learning_rate, optimiser)
 
     # Evaluate after training
     final_accuracy = evaluate(mlp, X, y)
@@ -183,7 +301,11 @@ def test_network(dtype):
     assert final_accuracy == 1.0
 
 
-def test_encoding():
+@pytest.mark.parametrize(
+    "dtype, optimiser",
+    [(dtype, optimiser) for dtype in dtypes for optimiser in optimisers],
+)
+def test_encoding(dtype, optimiser):
     # Test encoding
     # Hyperparameters
     input_size = 2
@@ -222,7 +344,7 @@ def test_encoding():
     )
 
     # Train the MLP
-    train_mlp(enc, X, y, epochs, learning_rate)
+    train_mlp(enc, X, y, epochs, learning_rate, optimiser)
 
     # Evaluate after training
     final_accuracy = evaluate(enc, X, y)
@@ -241,6 +363,7 @@ def run_test_network_with_custom_encoding(
     learning_rate,
     epochs,
     separate,
+    optimiser,
 ):
     if separate:
         encoding = Encoding(
@@ -288,7 +411,7 @@ def run_test_network_with_custom_encoding(
     )
 
     # Train the MLP
-    train_mlp(nwe, X, y, epochs, learning_rate)
+    train_mlp(nwe, X, y, epochs, learning_rate, optimiser)
 
     # Evaluate after training
     final_accuracy = evaluate(nwe, X, y)
@@ -299,10 +422,10 @@ def run_test_network_with_custom_encoding(
 
 
 @pytest.mark.parametrize(
-    "dtype",
-    [dtype for dtype in dtypes],
+    "dtype, optimiser",
+    [(dtype, optimiser) for dtype in dtypes for optimiser in optimisers],
 )
-def test_network_with_encoding_all(dtype):
+def test_network_with_encoding_all(dtype, optimiser):
     input_size = 3
     spherical_harmonics_config = {
         "otype": "SphericalHarmonics",
@@ -339,42 +462,50 @@ def test_network_with_encoding_all(dtype):
 
     print("Testing identity separate")
     run_test_network_with_custom_encoding(
-        identity_config, dtype, separate=True, **hyper_parameters
+        identity_config, dtype, separate=True, optimiser=optimiser, **hyper_parameters
     )
 
     print("Testing spherical separate")
     run_test_network_with_custom_encoding(
-        spherical_harmonics_config, dtype, separate=True, **hyper_parameters
+        spherical_harmonics_config,
+        dtype,
+        separate=True,
+        optimiser=optimiser,
+        **hyper_parameters,
     )
 
     print("Testing grid separate")
     run_test_network_with_custom_encoding(
-        grid_config, dtype, separate=True, **hyper_parameters
+        grid_config, dtype, separate=True, optimiser=optimiser, **hyper_parameters
     )
 
     # print("Testing identity nwe")
     # run_test_network_with_custom_encoding(
-    #     identity_config, dtype, separate=False, **hyper_parameters
+    #     identity_config, dtype, separate=False, optimiser=optimiser,**hyper_parameters
     # )
 
     # print("Testing spherical nwe")
     # run_test_network_with_custom_encoding(
-    #     spherical_harmonics_config, dtype, separate=False, **hyper_parameters
+    #     spherical_harmonics_config, dtype, separate=False,optimiser=optimiser, **hyper_parameters
     # )
 
     # print("Testing grid nwe")
     # run_test_network_with_custom_encoding(
-    #     grid_config, dtype, separate=False, **hyper_parameters
+    #     grid_config, dtype, separate=False, optimiser=optimiser,**hyper_parameters
     # )
 
 
 if __name__ == "__main__":
     dtype = torch.bfloat16
+    optimiser = "sgd"
+    # test_regression(dtype, optimiser)
+
+    optimiser = "sgd"
     # dtype = torch.float16
     print("Testing network")
-    test_network(dtype)
+    test_network(dtype, optimiser)
 
     # print("Testing encoding")
     # test_encoding()
 
-    # test_network_with_encoding_all(dtype)
+    # test_network_with_encoding_all(dtype, optimiser)
