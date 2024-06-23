@@ -16,7 +16,7 @@ PRINT_PROGRESS = True
 # dtypes = [torch.float16, torch.bfloat16]
 dtypes = [torch.bfloat16]
 
-USE_ADAM = False
+USE_ADAM = True
 
 
 class SimpleSGDOptimizer(torch.optim.Optimizer):
@@ -90,7 +90,25 @@ def train_mlp(model, data, labels, epochs, learning_rate):
         outputs = model(data)  # Forward pass
         loss = criterion(outputs, labels)  # Compute loss
         loss.backward()  # Backward pass
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+
+        for param in model.parameters():
+            if torch.isnan(param).any():
+                print("NaN value detected in parameters!")
+                break
+            if torch.isnan(param.grad).any():
+                print("NaN value detected in grad!")
+                break
+
         optimizer.step()  # Update weights
+        for param in model.parameters():
+            if torch.isnan(param).any():
+                print("NaN value detected in parameters after!")
+                break
+            if torch.isnan(param.grad).any():
+                print("NaN value detected in grad after!")
+                break
+
         # Early stopping condition
         if loss.item() < best_loss:
             best_loss = loss.item()
