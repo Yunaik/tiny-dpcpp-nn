@@ -53,7 +53,7 @@ from src.common import read_image, write_image, ROOT_DIR
 DATA_DIR = os.path.join(ROOT_DIR, "data")
 IMAGES_DIR = os.path.join(DATA_DIR, "images")
 
-DTYPE = torch.float16
+DTYPE = torch.bfloat16
 
 
 class Image(torch.nn.Module):
