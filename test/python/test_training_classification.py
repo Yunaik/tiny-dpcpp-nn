@@ -368,8 +368,8 @@ def test_network_with_encoding_all(dtype):
 
 
 if __name__ == "__main__":
-    # dtype = torch.bfloat16
-    dtype = torch.float16
+    dtype = torch.bfloat16
+    # dtype = torch.float16
     print("Testing network")
     test_network(dtype)
 

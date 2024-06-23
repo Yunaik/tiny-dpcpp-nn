@@ -16,7 +16,7 @@ class MLP(torch.nn.Module):
         output_activation=None,
         nwe_as_ref=False,  # NetworkWithEncoding (padded input as ones) is used as ref
         dtype=torch.bfloat16,
-        constant_weight=True,
+        constant_weight=False,
     ):
         super().__init__()
         self.dtype = dtype
@@ -103,8 +103,8 @@ class MLP(torch.nn.Module):
             raise ValueError("Invalid activation function")
 
     def set_weights(self, parameters):
-        assert parameters.dtype == self.dtype
         for i, weight in enumerate(parameters):
+            assert weight.dtype == self.dtype
             assert self.layers[i].weight.shape == weight.shape
             self.layers[i].weight = torch.nn.Parameter(weight)
 
