@@ -169,9 +169,7 @@ class Module(torch.nn.Module):
             # self.params = torch.nn.Parameter(
             #     initial_params.detach().clone().to(device), requires_grad=True
             # )
-            self.params = torch.nn.Parameter(
-                initial_params.to(device), requires_grad=True
-            )
+            self.params = torch.nn.Parameter(initial_params, requires_grad=True)
         else:
             print(
                 "No params initialised, as n_params = 0. This is correct for Encodings (apart from grid encodings)."
@@ -184,12 +182,12 @@ class Module(torch.nn.Module):
         if params is None:
             # this forces the backend to use the self.params which were overwritten in python only (pointing to different backend arrays)
             params = self.params
-        else:
-            assert isinstance(params, torch.Tensor), "Params is not a torch.Tensor"
-            if len(params.shape) > 1:
-                params = params.flatten()
-            # Set self.params to the params passed. Backend dpcpp and python seem to be different underlying memories
-            self.params = torch.nn.Parameter(params.to(self.device), requires_grad=True)
+        # else:
+        #     assert isinstance(params, torch.Tensor), "Params is not a torch.Tensor"
+        #     if len(params.shape) > 1:
+        #         params = params.flatten()
+        #     # Set self.params to the params passed. Backend dpcpp and python seem to be different underlying memories
+        #     self.params = torch.nn.Parameter(params.to(self.device), requires_grad=True)
         self.tnn_module.set_params(params, False)
 
     def get_reshaped_params(

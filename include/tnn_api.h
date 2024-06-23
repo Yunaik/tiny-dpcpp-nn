@@ -237,27 +237,22 @@ class Module {
 
     template <> struct torch_type<int> {
         static const auto dtype = torch::kInt32;
-        typedef int type;
     };
 
     template <> struct torch_type<double> {
         static const auto dtype = torch::kFloat64;
-        typedef double type;
     };
 
     template <> struct torch_type<float> {
         static const auto dtype = torch::kFloat32;
-        typedef float type;
     };
 
     template <> struct torch_type<fp16> {
         static const auto dtype = c10::ScalarType::Half;
-        typedef at::Half type;
     };
 
     template <> struct torch_type<bf16> {
         static const auto dtype = c10::ScalarType::BFloat16;
-        typedef at::BFloat16 type;
     };
 
   private:
@@ -299,8 +294,7 @@ template <typename T> class EncodingModule : public Module {
         std::unique_ptr<Context> model_ctx = encoding_->forward_impl(&this->sycl_queue_, input_dmv, &output_encoding);
         this->sycl_queue_.wait();
 
-        return xpu::dpcpp::fromUSM(reinterpret_cast<torch_type<T>::type *>(output_encoding.GetPointer()),
-                                   torch_type<T>::dtype,
+        return xpu::dpcpp::fromUSM((output_encoding.GetPointer()), torch_type<T>::dtype,
                                    {static_cast<long>(batch_size), static_cast<long>(encoding_->output_width())});
     }
 
@@ -444,7 +438,7 @@ template <typename T, int WIDTH> class NetworkModule : public Module {
         DeviceMatricesView<T> output_network(1, batch_size, network_.get_output_width(), 0, 0, 0, 0, interm_forw_ptr_);
         network_.inference(input_dm, output_network, {});
         this->sycl_queue_.wait();
-        return xpu::dpcpp::fromUSM(reinterpret_cast<torch_type<T>::type *>(interm_forw_ptr_), torch_type<T>::dtype,
+        return xpu::dpcpp::fromUSM((interm_forw_ptr_), torch_type<T>::dtype,
                                    {static_cast<long>(batch_size), static_cast<long>(network_.get_output_width())});
     }
 
@@ -461,8 +455,7 @@ template <typename T, int WIDTH> class NetworkModule : public Module {
                                              network_.get_output_width(), interm_forw_ptr_);
         network_.forward_pass(input_dm, output_network, {});
         this->sycl_queue_.wait();
-        return xpu::dpcpp::fromUSM(reinterpret_cast<torch_type<T>::type *>(
-                                       output_network.GetMatrixPointer(network_.get_n_hidden_layers() + 1)),
+        return xpu::dpcpp::fromUSM((output_network.GetMatrixPointer(network_.get_n_hidden_layers() + 1)),
                                    torch_type<T>::dtype,
                                    {static_cast<long>(batch_size), static_cast<long>(network_.get_output_width())});
     }
@@ -512,17 +505,14 @@ template <typename T, int WIDTH> class NetworkModule : public Module {
 
         torch::Tensor input_grad;
         if (get_dl_dinput) {
-            input_grad = xpu::dpcpp::fromUSM(reinterpret_cast<torch_type<T>::type *>(dL_dinput->GetPointer()),
-                                             torch_type<T>::dtype,
+            input_grad = xpu::dpcpp::fromUSM((dL_dinput->GetPointer()), torch_type<T>::dtype,
                                              {static_cast<long>(dL_dinput->nelements()), static_cast<long>(1)});
             delete dL_dinput; // delete only the view (underlying pointer still managed by Module class)
             dL_dinput = nullptr;
         }
 
-        return {input_grad,
-                xpu::dpcpp::fromUSM(
-                    reinterpret_cast<torch_type<T>::type *>(net_gradients_.GetViews().GetMatrixPointer(0)),
-                    torch_type<T>::dtype, {static_cast<long>(net_gradients_.nelements()), static_cast<long>(1)})};
+        return {input_grad, xpu::dpcpp::fromUSM((net_gradients_.GetViews().GetMatrixPointer(0)), torch_type<T>::dtype,
+                                                {static_cast<long>(net_gradients_.nelements()), static_cast<long>(1)})};
     }
 
     torch::Tensor initialize_params() override {
@@ -676,7 +666,7 @@ template <typename T_enc, typename T_net, int WIDTH> class NetworkWithEncodingMo
         this->sycl_queue_.wait();
 
         return xpu::dpcpp::fromUSM(
-            reinterpret_cast<torch_type<T_net>::type *>(interm_forw_ptr_), torch_type<T_net>::dtype,
+            (interm_forw_ptr_), torch_type<T_net>::dtype,
             {static_cast<long>(batch_size), static_cast<long>(network_->get_network()->get_output_width())});
     }
 
@@ -703,8 +693,7 @@ template <typename T_enc, typename T_net, int WIDTH> class NetworkWithEncodingMo
         this->sycl_queue_.wait();
 
         return xpu::dpcpp::fromUSM(
-            reinterpret_cast<torch_type<T_net>::type *>(
-                output_network.GetMatrixPointer(network_->get_network()->get_n_hidden_layers() + 1)),
+            (output_network.GetMatrixPointer(network_->get_network()->get_n_hidden_layers() + 1)),
             torch_type<T_net>::dtype,
             {static_cast<long>(batch_size), static_cast<long>(network_->get_network()->get_output_width())});
     }
@@ -743,9 +732,8 @@ template <typename T_enc, typename T_net, int WIDTH> class NetworkWithEncodingMo
             net_gradients_->Packed(*net_gradients_.get());
         }
         return {torch::Tensor(),
-                xpu::dpcpp::fromUSM(
-                    reinterpret_cast<torch_type<T_net>::type *>(net_gradients_->GetViews().GetMatrixPointer(0)),
-                    torch_type<T_net>::dtype, {static_cast<long>(net_gradients_->nelements()), static_cast<long>(1)})};
+                xpu::dpcpp::fromUSM((net_gradients_->GetViews().GetMatrixPointer(0)), torch_type<T_net>::dtype,
+                                    {static_cast<long>(net_gradients_->nelements()), static_cast<long>(1)})};
     }
 
     std::tuple<torch::Tensor, torch::Tensor> backward_pass(torch::Tensor grad_output, torch::Tensor input_from_fwd,
@@ -794,8 +782,7 @@ template <typename T_enc, typename T_net, int WIDTH> class NetworkWithEncodingMo
         CopyToDeviceMem(net_gradients_->GetViews(), enc_gradients_->GetView(), *all_gradients_.get(),
                         this->sycl_queue_);
         return {torch::Tensor(),
-                xpu::dpcpp::fromUSM(reinterpret_cast<torch_type<T_enc>::type *>(all_gradients_->data()),
-                                    torch_type<T_enc>::dtype,
+                xpu::dpcpp::fromUSM((all_gradients_->data()), torch_type<T_enc>::dtype,
                                     {static_cast<long>(all_gradients_->size()), static_cast<long>(1)})};
     }
 

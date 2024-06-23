@@ -9,14 +9,14 @@ BATCH_SIZE = 2**7
 
 WIDTH = 64
 
-TRAIN_EPOCHS = 2  # this is high to ensure that all tests pass (some are fast < 100 and some are slow)
+TRAIN_EPOCHS = 1000  # this is high to ensure that all tests pass (some are fast < 100 and some are slow)
 
 PRINT_PROGRESS = True
 
 # dtypes = [torch.float16, torch.bfloat16]
 dtypes = [torch.bfloat16]
 
-USE_ADAM = False
+USE_ADAM = True
 
 
 class SimpleSGDOptimizer(torch.optim.Optimizer):
@@ -79,8 +79,8 @@ def train_mlp(model, data, labels, epochs, learning_rate):
         optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     else:
         print("Using SGD")
-        # optimizer = optim.SGD(model.parameters(), lr=learning_rate)
-        optimizer = SimpleSGDOptimizer(model.parameters(), lr=learning_rate)
+        optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+        # optimizer = SimpleSGDOptimizer(model.parameters(), lr=learning_rate)
 
     best_loss = float("inf")
     loss_stagnant_counter = 0
@@ -103,7 +103,7 @@ def train_mlp(model, data, labels, epochs, learning_rate):
             print("Loss hasn't improved for 50 epochs. Training aborted.")
             break
 
-        if PRINT_PROGRESS and (epoch + 1) % 1 == 0:
+        if PRINT_PROGRESS and (epoch + 1) % 10 == 0:
             print(f"Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}")
 
 
@@ -351,8 +351,8 @@ def test_network_with_encoding_all(dtype):
 
 
 if __name__ == "__main__":
-    dtype = torch.bfloat16
-    # dtype = torch.float16
+    # dtype = torch.bfloat16
+    dtype = torch.float16
     print("Testing network")
     test_network(dtype)
 
