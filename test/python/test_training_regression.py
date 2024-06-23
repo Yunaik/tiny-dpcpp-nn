@@ -1,4 +1,5 @@
 import torch
+import pytest
 import intel_extension_for_pytorch
 from torch.utils.data import DataLoader, TensorDataset
 import matplotlib.pyplot as plt
@@ -6,11 +7,10 @@ from src.utils import create_models
 
 torch.set_printoptions(precision=10)
 
+optimisers = ["adam", "sgd"]
+dtypes = [torch.bfloat16]
+# dtypes = [torch.float16, torch.bfloat16]
 
-USE_ADAM = True
-# USE_ADAM = False
-
-DTYPE = torch.bfloat16
 USE_NWE = False
 WIDTH = 16
 num_epochs = 100
@@ -49,7 +49,11 @@ def true_function(x):
     return 0.5 * x
 
 
-def test_regression():
+@pytest.mark.parametrize(
+    "dtype, optimiser",
+    [(dtype, optimiser) for dtype in dtypes for optimiser in optimisers],
+)
+def test_regression(dtype, optimiser):
     # Create a synthetic dataset based on the true function
     input_size = WIDTH
     output_size = 1
@@ -79,20 +83,22 @@ def test_regression():
         "relu",
         "linear",
         use_nwe=USE_NWE,
-        input_dtype=torch.float if USE_NWE else DTYPE,
-        backend_param_dtype=DTYPE,
+        input_dtype=torch.float if USE_NWE else dtype,
+        backend_param_dtype=dtype,
         use_weights_of_tinynn=True,
     )
 
     def criterion(y_pred, y_true):
         return ((y_pred - y_true) ** 2).mean()
 
-    if USE_ADAM:
+    if optimiser == "adam":
         optimizer1 = torch.optim.Adam(model_dpcpp.parameters(), lr=LR)
         optimizer2 = torch.optim.Adam(model_torch.parameters(), lr=LR)
-    else:
+    elif optimiser == "sgd":
         optimizer1 = SimpleSGDOptimizer(model_dpcpp.parameters(), name="dpcpp", lr=LR)
         optimizer2 = SimpleSGDOptimizer(model_torch.parameters(), name="torch", lr=LR)
+    else:
+        raise NotImplementedError(f"{optimiser} not implemented as optimisers")
 
     # Training loop
     for epoch in range(num_epochs):
@@ -101,8 +107,8 @@ def test_regression():
             inputs, labels = data
 
             # DPCPP
-            inputs1 = inputs.clone().to(DEVICE).to(DTYPE)
-            labels1 = labels.clone().to(DEVICE).to(DTYPE)
+            inputs1 = inputs.clone().to(DEVICE).to(dtype)
+            labels1 = labels.clone().to(DEVICE).to(dtype)
             # Forward pass
             outputs1 = model_dpcpp(inputs1)
             loss1 = criterion(outputs1, labels1)
@@ -118,8 +124,8 @@ def test_regression():
             ), "The params for model_dpcpp are the same after update, but they should be different."
 
             # Torch
-            inputs2 = inputs.clone().to(DEVICE).to(DTYPE)
-            labels2 = labels.clone().to(DEVICE).to(DTYPE)
+            inputs2 = inputs.clone().to(DEVICE).to(dtype)
+            labels2 = labels.clone().to(DEVICE).to(dtype)
             outputs2 = model_torch(inputs2)
             loss2 = criterion(outputs2, labels2)
             optimizer2.zero_grad()
@@ -133,6 +139,34 @@ def test_regression():
                 params2, params_updated2
             ), "The params for model_dpcpp are the same after update, but they should be different."
 
+            # Assertions
+            assert (
+                params1.dtype == params2.dtype
+            ), f"Params not same dtype: {params1.dtype}, {params2.dtype}"
+            assert torch.isclose(
+                inputs1, inputs2
+            ).all(), f"Inputs not close with sums: {abs(inputs1).sum()}, {abs(inputs2).sum()}"
+            assert torch.isclose(
+                outputs1, outputs2
+            ).all(), f"Outputs not close with sums: {abs(outputs1).sum()}, {abs(outputs2).sum()}"
+            assert torch.isclose(
+                labels1, labels2
+            ).all(), f"Labels not close with sums: {abs(labels1).sum()}, {abs(labels2).sum()}"
+            assert torch.isclose(
+                loss1, loss2
+            ).all(), f"Loss not close with sums: {loss1.item()}, {loss2.item()}"
+            assert torch.isclose(
+                abs(params1).sum(), abs(params2).sum()
+            ), f"Params before not close with sums: {abs(params1).sum()}, {abs(params2).sum()}"
+
+            assert torch.isclose(
+                abs(grads1).sum(), abs(grads2).sum()
+            ), f"Grads not close with sums: {abs(grads1).sum()}, {abs(grads2).sum()}"
+
+            assert torch.isclose(
+                abs(params_updated1).sum(), abs(params_updated2).sum()
+            ), f"Params after not close with sums: {abs(params_updated1).sum()}, {abs(params_updated2).sum()}"
+
         print(f"Epoch {epoch}, Losses (dpcpp/torch): { loss1.item()}/{ loss2.item()}")
         print(
             "========================================================================"
@@ -142,4 +176,6 @@ def test_regression():
 
 
 if __name__ == "__main__":
-    test_regression()
+    dtype = torch.bfloat16
+    optimiser = "sgd"
+    test_regression(dtype, optimiser)
