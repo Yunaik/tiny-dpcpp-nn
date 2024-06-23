@@ -469,4 +469,4 @@ class Encoding(Module):
         return create_encoding(
             self.encoding_name,
             self.encoding_config,
-       
+        )
