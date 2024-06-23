@@ -16,7 +16,7 @@ PRINT_PROGRESS = True
 # dtypes = [torch.float16, torch.bfloat16]
 dtypes = [torch.bfloat16]
 
-USE_ADAM = True
+USE_ADAM = False
 
 
 class SimpleSGDOptimizer(torch.optim.Optimizer):
@@ -47,21 +47,21 @@ class SimpleSGDOptimizer(torch.optim.Optimizer):
                 #     print("dpcpp param: ")
                 #     param_last_layer_reshaped = p.data[-256:, 0].reshape(16, 16)
                 #     print(param_last_layer_reshaped)
-                print(f"Grad: {grad}, sum: {grad.sum().sum()}")
-                print(f"p.data: {p.data}, sum: {p.data.sum().sum():.10f}")
-                print(f"lr: {group['lr']}")
-                print(
-                    f"val: {group['lr']* grad}, sum: {(group['lr']* grad).sum().sum()}"
-                )
-                p.data = p.data - group["lr"] * grad
+                # print(f"Grad: {grad}, sum: {grad.sum().sum()}")
+                # print(f"p.data: {p.data}, sum: {p.data.sum().sum():.10f}")
+                # print(f"lr: {group['lr']}")
+                # print(
+                #     f"val: {group['lr']* grad}, sum: {(group['lr']* grad).sum().sum()}"
+                # )
+                p.data.copy_(p.data - group["lr"] * grad)
                 # tmp = p.data - group["lr"] * grad
-                print(f"After p.data: {p.data}, sum: {p.data.sum().sum():.10f}")
+                # print(f"After p.data: {p.data}, sum: {p.data.sum().sum():.10f}")
                 # print(f"After p.data: {tmp}, sum: {tmp.sum().sum():.10f}")
                 # print("===========================")
                 grad_sum += torch.abs(grad).sum()
                 param_sum += torch.abs(p.data).sum()
-        print(f"{self.name} Grad sum: {grad_sum}")
-        print(f"{self.name} p.data sum: {param_sum}")
+        # print(f"{self.name} Grad sum: {grad_sum}")
+        # print(f"{self.name} p.data sum: {param_sum}")
         return loss
 
 
@@ -79,8 +79,8 @@ def train_mlp(model, data, labels, epochs, learning_rate):
         optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     else:
         print("Using SGD")
-        optimizer = optim.SGD(model.parameters(), lr=learning_rate)
-        # optimizer = SimpleSGDOptimizer(model.parameters(), lr=learning_rate)
+        # optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+        optimizer = SimpleSGDOptimizer(model.parameters(), lr=learning_rate)
 
     best_loss = float("inf")
     loss_stagnant_counter = 0
@@ -91,7 +91,6 @@ def train_mlp(model, data, labels, epochs, learning_rate):
         loss = criterion(outputs, labels)  # Compute loss
         loss.backward()  # Backward pass
         optimizer.step()  # Update weights
-
         # Early stopping condition
         if loss.item() < best_loss:
             best_loss = loss.item()
