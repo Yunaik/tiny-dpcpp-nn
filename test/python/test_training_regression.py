@@ -76,7 +76,7 @@ def test_regression():
         input_size,
         [WIDTH],
         output_size,
-        "relu",
+        "linear",
         "linear",
         use_nwe=USE_NWE,
         input_dtype=torch.float if USE_NWE else DTYPE,
