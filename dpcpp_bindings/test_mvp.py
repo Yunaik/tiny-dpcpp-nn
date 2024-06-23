@@ -45,7 +45,7 @@ if __name__ == "__main__":
     print(f"Net weight after: {net.params.data}/{net.network.get_weight()}")
 
     # Create an optimizer (SGD in this case)
-    optimizer = optim.SGD(net.parameters(), lr=0.1)
+    optimizer = optim.Adam(net.parameters(), lr=0.1)
 
     # Training loop (just a few iterations for demonstration)
     for epoch in range(100):

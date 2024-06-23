@@ -62,6 +62,7 @@ class _module_function(torch.autograd.Function):
     @staticmethod
     def forward(ctx, native_tnn_module, input, params, info, loss_scale):
         batch_size = input.shape[0]
+
         if info["is_in_eval_mode"]:
             output = native_tnn_module.inference(input.to(params.dtype))
         else:
@@ -165,6 +166,7 @@ class Module(torch.nn.Module):
 
         if self.tnn_module.n_params():
             initial_params = self.tnn_module.initial_params()
+            # cloned_params = initial_params.clone().to(torch.float32).to(self.device)
             self.params = torch.nn.Parameter(initial_params, requires_grad=True)
         else:
             print(
@@ -184,7 +186,7 @@ class Module(torch.nn.Module):
         #         params = params.flatten()
         #     # Set self.params to the params passed. Backend dpcpp and python seem to be different underlying memories
         #     self.params = torch.nn.Parameter(params.to(self.device), requires_grad=True)
-        self.tnn_module.set_params(params, False)
+        self.tnn_module.set_params(params.to(self.backend_param_dtype), False)
 
     def get_reshaped_params(
         self,
@@ -327,7 +329,7 @@ class Module(torch.nn.Module):
         #     None
         # )  # Setting backend Swiftnet weights to the ones of self.params
         # # TODO: this behaviour changes for encoding.
-
+        self.set_params()
         output = _module_function.apply(
             self.tnn_module,
             padded_tensor.contiguous(),
@@ -467,4 +469,4 @@ class Encoding(Module):
         return create_encoding(
             self.encoding_name,
             self.encoding_config,
-        )
+       

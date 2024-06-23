@@ -16,7 +16,7 @@ PRINT_PROGRESS = True
 # dtypes = [torch.float16, torch.bfloat16]
 dtypes = [torch.bfloat16]
 
-USE_ADAM = True
+USE_ADAM = False
 
 
 class SimpleSGDOptimizer(torch.optim.Optimizer):
@@ -53,7 +53,8 @@ class SimpleSGDOptimizer(torch.optim.Optimizer):
                 # print(
                 #     f"val: {group['lr']* grad}, sum: {(group['lr']* grad).sum().sum()}"
                 # )
-                p.data.copy_(p.data - group["lr"] * grad)
+                # p.data.copy_(p.data - group["lr"] * grad)
+                p.data = p.data - group["lr"] * grad
                 # tmp = p.data - group["lr"] * grad
                 # print(f"After p.data: {p.data}, sum: {p.data.sum().sum():.10f}")
                 # print(f"After p.data: {tmp}, sum: {tmp.sum().sum():.10f}")
