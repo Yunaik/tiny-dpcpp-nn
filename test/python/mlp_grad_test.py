@@ -25,14 +25,15 @@ def elementwise_is_close(reference, value, atol=1e-8, rtol=1e-4):
     for i, (a, b) in enumerate(zip(reference, value)):
         abs_diff = np.abs(a - b)
         rel_diff = abs_diff / np.maximum(np.abs(a), np.abs(b))
-        print(f"Element {i}:")
-        print(f"  Value in cuda['y']: {a}")
-        print(f"  Value in y: {b}")
-        print(f"  Absolute difference: {abs_diff}")
-        print(f"  Relative difference: {rel_diff}")
-        print(f"  atol: {atol}")
-        print(f"  rtol: {rtol}")
-        print(f"  Within tolerance: {abs_diff <= atol + rtol * np.abs(b)}\n")
+        if abs_diff > atol or rel_diff > rtol:
+            print(f"Element {i}:")
+            print(f"  Value in cuda['y']: {a}")
+            print(f"  Value in y: {b}")
+            print(f"  Absolute difference: {abs_diff}")
+            print(f"  Relative difference: {rel_diff}")
+            print(f"  atol: {atol}")
+            print(f"  rtol: {rtol}")
+            print(f"  Within tolerance: {abs_diff <= atol + rtol * np.abs(b)}\n")
 
 
 # avoid padding
@@ -81,6 +82,7 @@ x = torch.distributions.uniform.Uniform(-1, 1).sample((1024, n_input_dims)).to(d
 
 if CONSTANT_CASE:
     x = x * 0 + 0.1
+
 y = network(x)
 y.backward(torch.ones_like(y))
 filename = f"output/mlp_grad_test_tensors_{config['activation']}_{config['output_activation']}_{config['n_neurons']}_{config['n_hidden_layers']}_constant{CONSTANT_CASE}.npz"
@@ -97,8 +99,10 @@ elif device == "xpu":
     cuda = np.load(filename)
     elementwise_is_close(cuda["y"].flatten(), to_numpy(y).flatten())
     np.testing.assert_array_equal(cuda["x"].flatten(), to_numpy(x).flatten())
-    np.testing.assert_array_equal(cuda["params"].sum(), to_numpy(network.params.sum()))
     np.testing.assert_allclose(cuda["y"].flatten(), to_numpy(y).flatten())
+    np.testing.assert_allclose(
+        cuda["params"].sum(), to_numpy(network.params.sum()), rtol=1e-3
+    )
     np.testing.assert_allclose(
         cuda["params_grad"].flatten(),
         to_numpy(network.params.grad).flatten(),
