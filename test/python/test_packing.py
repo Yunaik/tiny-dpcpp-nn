@@ -157,6 +157,7 @@ def test_reshaped_params_by_values(width, n_hidden_layers, mode):
             np.testing.assert_array_equal(layer, reference_matrix)
         elif mode == "pack":
             expected_values = vertical_pack(reference_matrix)
+            print(expected_values)
             np.testing.assert_array_equal(layer, expected_values)
         elif mode == "unpack":
             np.testing.assert_array_equal(layer, reference_matrix)
@@ -167,5 +168,5 @@ if __name__ == "__main__":
     # test_vertical_unpack()
     # test_16x16_pack_unpack()
     # test_16x16_unpack_pack()
-    test_reshaped_params_by_values(16, 2, "unpack")
+    test_reshaped_params_by_values(16, 1, "pack")
     # test_reshaped_params_by_shape(16, 2, "reshape")
