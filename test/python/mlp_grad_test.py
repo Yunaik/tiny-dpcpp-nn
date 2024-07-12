@@ -10,7 +10,7 @@ else:
     import tiny_dpcpp_nn as tcnn
 
     device = "xpu"
-torch.set_printoptions(precision=10)
+torch.set_printoptions(precision=2)
 np.set_printoptions(precision=10)
 
 
@@ -84,9 +84,14 @@ def run_config(config, weight_val, input_val):
 
     # make sure we have the same initialization
     torch.manual_seed(42)
+    # params = (
+    #     torch.distributions.uniform.Uniform(-0.216, 0.216)
+    #     .sample(network.params.shape)
+    #     .to(device)
+    # )
     params = (
-        torch.distributions.uniform.Uniform(-0.216, 0.216)
-        .sample(network.params.shape)
+        torch.linspace(1, network.params.numel(), steps=network.params.numel())
+        .reshape(network.params.shape)
         .to(device)
     )
 
@@ -109,6 +114,8 @@ def run_config(config, weight_val, input_val):
 
     y = network(x)
     y.backward(torch.ones_like(y))
+
+    return
     weight_val_string = (
         f"1e{np.log10(weight_val):.0f}" if weight_val != "random" else "random"
     )
@@ -202,8 +209,8 @@ if __name__ == "__main__":
     activation_funcs = ["none"]
     hidden_layer_counts = [1]
     hidden_sizes = [16]
-    input_vals = [0.1]
-    params_vals = [0.1]
+    input_vals = ["random"]
+    params_vals = ["random"]
     # activation_funcs = ["relu", "none", "sigmoid"]
     # hidden_layer_counts = [1, 2, 4]
     # hidden_sizes = [16, 32, 64, 128]
