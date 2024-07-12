@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from src.mlp import MLP
+from src.utils import vertical_pack
 
 if torch.cuda.is_available():
     import tinycudann as tcnn
@@ -115,7 +116,6 @@ def run_config(config, weight_val, input_val):
     y = network(x)
     y.backward(torch.ones_like(y))
 
-    return
     weight_val_string = (
         f"1e{np.log10(weight_val):.0f}" if weight_val != "random" else "random"
     )

@@ -6,6 +6,100 @@ from tiny_dpcpp_nn import Network, NetworkWithInputEncoding
 import torch
 
 
+def to_packed_layout_coord(idx, rows, cols):
+    assert idx < rows * cols
+    i = idx // cols
+    j = idx % cols
+
+    if i % 2 == 0:
+        return i * cols + 2 * j
+    else:
+        return (i - 1) * cols + 2 * j + 1
+
+
+def vertical_pack(matrix):
+    rows, cols = matrix.shape
+    packed = [0] * (rows * cols)  # Preallocate the packed array
+
+    for idx in range(rows * cols):
+        packed_idx = to_packed_layout_coord(idx, rows, cols)
+        packed[packed_idx] = matrix.flat[idx]  # Use flat for 1D indexing
+
+    return np.array(packed).reshape(rows, cols)
+
+
+def vertical_unpack(packed_matrix):
+    rows, cols = packed_matrix.shape
+    original = np.zeros(
+        (rows, cols), dtype=packed_matrix.dtype
+    )  # Preallocate the original array
+
+    for idx in range(rows * cols):
+        packed_idx = to_packed_layout_coord(idx, rows, cols)
+        original.flat[idx] = packed_matrix.flat[packed_idx]  # Use flat for 1D indexing
+
+    return original
+
+
+def get_reshaped_params(
+    weights,
+    width,
+    n_hidden_layers,
+    dtype,
+    device,
+    mode,  # reshape, pack, unpack
+):
+
+    assert (
+        len(weights.shape) == 1 or weights.shape[1] == 1
+    ), "Weights is assumed to be a 1-D vector"
+
+    n_input_dims = width  # because we pad
+    input_matrix = (
+        weights[: width * n_input_dims]
+        .reshape(width, n_input_dims)
+        .to(dtype)
+        .to(device)
+    )
+
+    len_input_matrix = input_matrix.shape[0] * input_matrix.shape[1]
+    hidden_layer_size = width * width
+    hidden_matrices = []
+
+    for nth_hidden in range(n_hidden_layers - 1):
+        hidden_matrix = (
+            weights[
+                len_input_matrix
+                + nth_hidden * hidden_layer_size : len_input_matrix
+                + (1 + nth_hidden) * hidden_layer_size
+            ]
+            .reshape(width, width)
+            .to(dtype)
+            .to(device)
+        )
+
+        hidden_matrices.append(hidden_matrix)
+
+    n_output_dims = width  # because we pad
+    output_matrix = (
+        weights[-width * n_output_dims :]
+        .reshape(width, n_output_dims)
+        .to(dtype)
+        .to(device)
+    )
+
+    all_weights = []
+
+    all_weights.append(input_matrix)
+    all_weights.extend(hidden_matrices)
+    all_weights.append(output_matrix[:n_output_dims, ...])
+    for layer in all_weights:
+        if mode == "pack":
+            layer = vertical_pack(layer)
+        elif mode == "unpack":
+            layer = vertical_unpack(layer)
+    return all_weights
+
 def get_grad_params(model):
     # This funciton unpacks for comparison with torch
     grads_all = []
