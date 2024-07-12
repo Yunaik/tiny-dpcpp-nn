@@ -181,8 +181,7 @@ class Module(torch.nn.Module):
     def set_params(self, params=None):
         if not self.tnn_module.n_params():
             return
-        if params is None:
-            print("Standard setting params with already packed")
+
         packed = params is None
 
         if params is None:
@@ -190,15 +189,11 @@ class Module(torch.nn.Module):
             params = self.params
 
         assert isinstance(params, torch.Tensor), "Params is not a torch.Tensor"
-        print(f"Params unpacked: {params[:256]}")
 
-        print(f"Params unpacked: {params[:256].reshape(16,16)}")
-        print(f"Packed: {packed}")
         self.tnn_module.set_params(params.to(self.backend_param_dtype), packed)
 
         if not packed:
             packed_weights = self.get_params()  # this is always packed params
-            print(f"Params packed: {packed_weights[:256].reshape(16,16)}")
 
             # Set self.params to the params passed. Backend dpcpp and python seem to be different underlying memories
             self.params.data.copy_(packed_weights)
