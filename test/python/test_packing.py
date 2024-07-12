@@ -128,43 +128,44 @@ def test_reshaped_params_by_values(width, n_hidden_layers, mode):
 
     dtype = torch.float32
     device = torch.device("cpu")
+    if mode == "unpack":
+        reshaped_params = get_reshaped_params(
+            weights, width, n_hidden_layers, dtype, device, "pack"
+        )  # need to pack first
+        reshaped_params = get_reshaped_params(
+            torch.tensor(reshaped_params).flatten().squeeze(),
+            width,
+            n_hidden_layers,
+            dtype,
+            device,
+            mode,
+        )
+    else:
+        reshaped_params = get_reshaped_params(
+            weights, width, n_hidden_layers, dtype, device, mode
+        )
 
-    reshaped_params = get_reshaped_params(
-        weights, width, n_hidden_layers, dtype, device, mode
-    )
     assert len(reshaped_params) == n_hidden_layers + 1
     for i, layer in enumerate(reshaped_params):
         assert layer.shape == (width, width)
+        start_idx = i * width * width
+        end_idx = start_idx + width * width
+        reference_matrix = torch.arange(1 + start_idx, 1 + end_idx).reshape(
+            width, width
+        )
         if mode == "reshape":
-            start_idx = i * width * width
-            end_idx = start_idx + width * width
-            expected_values = (
-                torch.arange(1 + start_idx, 1 + end_idx).reshape(width, width).numpy()
-            )
-            np.testing.assert_array_equal(layer, expected_values)
+            np.testing.assert_array_equal(layer, reference_matrix)
         elif mode == "pack":
-            start_idx = i * width * width
-            end_idx = start_idx + width * width
-            reference_matrix = (
-                torch.arange(1 + start_idx, 1 + end_idx).reshape(width, width).numpy()
-            )
             expected_values = vertical_pack(reference_matrix)
             np.testing.assert_array_equal(layer, expected_values)
         elif mode == "unpack":
-            start_idx = i * width * width
-            end_idx = start_idx + width * width
-            reference_matrix = (
-                torch.arange(1 + start_idx, 1 + end_idx).reshape(width, width).numpy()
-            )
-            packed_matrix = vertical_pack(reference_matrix)
-            expected_values = vertical_unpack(packed_matrix)
-            np.testing.assert_array_equal(layer, expected_values)
+            np.testing.assert_array_equal(layer, reference_matrix)
 
 
 if __name__ == "__main__":
-    test_vertical_pack()
-    test_vertical_unpack()
-    test_16x16_pack_unpack()
-    test_16x16_unpack_pack()
-    test_reshaped_params_by_values(16, 3, "reshape")
-    test_reshaped_params_by_shape(16, 3, "reshape")
+    # test_vertical_pack()
+    # test_vertical_unpack()
+    # test_16x16_pack_unpack()
+    # test_16x16_unpack_pack()
+    test_reshaped_params_by_values(16, 2, "unpack")
+    # test_reshaped_params_by_shape(16, 2, "reshape")

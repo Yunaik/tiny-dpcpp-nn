@@ -23,22 +23,20 @@ def vertical_pack(matrix):
 
     for idx in range(rows * cols):
         packed_idx = to_packed_layout_coord(idx, rows, cols)
-        packed[packed_idx] = matrix.flat[idx]  # Use flat for 1D indexing
+        packed[packed_idx] = matrix.flatten()[idx]  # Use flat for 1D indexing
 
     return np.array(packed).reshape(rows, cols)
 
 
 def vertical_unpack(packed_matrix):
     rows, cols = packed_matrix.shape
-    original = np.zeros(
-        (rows, cols), dtype=packed_matrix.dtype
-    )  # Preallocate the original array
+    original = [0] * (rows * cols)  # Preallocate the original array
 
     for idx in range(rows * cols):
         packed_idx = to_packed_layout_coord(idx, rows, cols)
-        original.flat[idx] = packed_matrix.flat[packed_idx]  # Use flat for 1D indexing
+        original[idx] = packed_matrix.flatten()[packed_idx]  # Use flat for 1D indexing
 
-    return original
+    return np.array(original).reshape(rows, cols)
 
 
 def get_reshaped_params(
@@ -93,12 +91,16 @@ def get_reshaped_params(
     all_weights.append(input_matrix)
     all_weights.extend(hidden_matrices)
     all_weights.append(output_matrix[:n_output_dims, ...])
+
+    all_weights_changed = []
     for layer in all_weights:
         if mode == "pack":
             layer = vertical_pack(layer)
         elif mode == "unpack":
             layer = vertical_unpack(layer)
-    return all_weights
+        all_weights_changed.append(layer)
+    return all_weights_changed
+
 
 def get_grad_params(model):
     # This funciton unpacks for comparison with torch
