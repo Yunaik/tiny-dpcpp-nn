@@ -35,7 +35,7 @@ class MLP(torch.nn.Module):
             input_dim, hidden_sizes[0], bias=BIAS, dtype=self.dtype
         )
         if constant_weight:
-            torch.nn.init.constant_(input_layer.weight, 0.1)
+            torch.nn.init.constant_(input_layer.weight, 0.01)
         self.layers.append(input_layer)
 
         # Hidden layers
@@ -44,7 +44,7 @@ class MLP(torch.nn.Module):
                 hidden_sizes[i - 1], hidden_sizes[i], bias=BIAS, dtype=self.dtype
             )
             if constant_weight:
-                torch.nn.init.constant_(hidden_layer.weight, 0.1)
+                torch.nn.init.constant_(hidden_layer.weight, 0.01)
             self.layers.append(hidden_layer)
 
         # Output layer
@@ -52,7 +52,7 @@ class MLP(torch.nn.Module):
             hidden_sizes[-1], output_size, bias=BIAS, dtype=self.dtype
         )
         if constant_weight:
-            torch.nn.init.constant_(output_layer.weight, 0.1)
+            torch.nn.init.constant_(output_layer.weight, 0.01)
         self.layers.append(output_layer)
 
     def forward(self, x):
