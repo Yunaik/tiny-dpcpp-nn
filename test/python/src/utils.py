@@ -25,7 +25,7 @@ def vertical_pack(matrix):
         packed_idx = to_packed_layout_coord(idx, rows, cols)
         packed[packed_idx] = matrix.flatten()[idx]  # Use flat for 1D indexing
 
-    return np.array(packed).reshape(rows, cols)
+    return torch.tensor(packed).reshape(rows, cols)
 
 
 def vertical_unpack(packed_matrix):
@@ -36,7 +36,7 @@ def vertical_unpack(packed_matrix):
         packed_idx = to_packed_layout_coord(idx, rows, cols)
         original[idx] = packed_matrix.flatten()[packed_idx]  # Use flat for 1D indexing
 
-    return np.array(original).reshape(rows, cols)
+    return torch.tensor(original).reshape(rows, cols)
 
 
 def get_reshaped_params(
@@ -98,8 +98,19 @@ def get_reshaped_params(
             layer = vertical_pack(layer)
         elif mode == "unpack":
             layer = vertical_unpack(layer)
-        all_weights_changed.append(layer)
+        all_weights_changed.append(layer.to(device))
     return all_weights_changed
+
+
+def get_unpacked_params(model, weights):
+    return get_reshaped_params(
+        weights,
+        model.width,
+        model.n_hidden_layers,
+        model.backend_param_dtype,
+        model.device,
+        "unpack",
+    )
 
 
 def get_grad_params(model):
@@ -108,23 +119,19 @@ def get_grad_params(model):
     params_all = []
     for param in model.parameters():
         if param.requires_grad and param.grad is not None:
-            gradient = param.grad
+            gradient = param.grad.clone()
+
             if len(gradient.shape) == 1 or param.data.shape[1] == 1:
-                grad = model.get_reshaped_params(
-                    gradient.clone(), is_packed_format=True
-                )
-            else:
-                grad = gradient.clone()
-            grads_all.append(grad)
+                # for tiny-dpcpp-nn, need to unpack
+                gradient = get_unpacked_params(model, gradient)
+            grads_all.append(gradient)
 
-        if len(param.data.shape) == 1 or param.data.shape[1] == 1:
-            param_reshaped = model.get_reshaped_params(
-                param.data.clone(), is_packed_format=True
-            )
-        else:
-            param_reshaped = param.data.clone()
+        param_data = param.data.clone()
+        if len(param_data.shape) == 1 or param_data.shape[1] == 1:
+            # for tiny-dpcpp-nn, need to unpack
+            param_data = get_unpacked_params(model, param_data)
 
-        params_all.append(param_reshaped)
+        params_all.append(param_data)
     return grads_all, params_all
 
 
