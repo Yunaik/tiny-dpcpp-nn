@@ -13,6 +13,7 @@
 #include "doctest/doctest.h"
 
 #include "common.h"
+#include "result_check.h"
 
 TEST_CASE("Testing get_packed_weights for 16") {
 
