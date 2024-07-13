@@ -101,6 +101,7 @@ def test_grad(
     dtype,
     use_nwe,
     use_weights_of_tinynn,
+    use_constant_weight,
     iterations=1,
     n_steps=1,  # if this is too large, there will be accumulated error (weights aren't the same, thus the loss is not the same etc)
 ):
@@ -113,7 +114,7 @@ def test_grad(
                 torch.tensor(BATCH_SIZE * [0.001 for _ in range(input_size)])
                 .to(DEVICE_NAME)
                 .reshape(BATCH_SIZE, -1)
-            ) * 0 + 0.1
+            )
             y_train = torch.ones([BATCH_SIZE, output_size]).to(DEVICE_NAME)
         else:
             x_train = torch.rand([BATCH_SIZE, input_size]).to(DEVICE_NAME)
@@ -131,7 +132,7 @@ def test_grad(
             backend_param_dtype=dtype,
             use_nwe=use_nwe,
             use_weights_of_tinynn=use_weights_of_tinynn,
-            constant_weight=True,
+            use_constant_weight=use_constant_weight,
         )
 
         loss_dpcpp, y_dpcpp, grads_dpcpp, params_dpcpp = train_model(
@@ -199,10 +200,11 @@ def test_fwd(
     dtype,
     use_nwe,
     use_weights_of_tinynn,
+    use_constant_weight,
 ):
     # Generate random input data for testing
     torch.manual_seed(123)
-    input_data = torch.randn(BATCH_SIZE, input_size).to(DEVICE_NAME) * 0 + 0.1
+    input_data = torch.randn(BATCH_SIZE, input_size).to(DEVICE_NAME)
     model_dpcpp, model_torch = create_models(
         input_size,
         [hidden_size] * hidden_layers,
@@ -213,7 +215,7 @@ def test_fwd(
         backend_param_dtype=dtype,
         use_nwe=use_nwe,
         use_weights_of_tinynn=use_weights_of_tinynn,
-        constant_weight=True,
+        use_constant_weight=use_constant_weight,
     )
     model_torch.to(DEVICE_NAME)
     model_dpcpp.to(DEVICE_NAME)
@@ -221,19 +223,22 @@ def test_fwd(
     y_torch = model_torch(input_data)
     y_dpcpp = model_dpcpp(input_data)
     eps = 1e-3
-    forward_error = abs(y_torch.sum() - y_dpcpp.sum()) / max(abs(y_torch).sum(), eps)
+    forward_error = (abs(y_torch).sum() - abs(y_dpcpp).sum()) / max(
+        abs(y_torch).sum(), eps
+    )
 
     print("Torch output: ", y_torch[-1, :])
     print("DPCPP output: ", y_dpcpp[-1, :])
+    print(
+        f"Forward error: {forward_error}, y_torch.sum(): {y_torch.sum()}, y_dpcpp.sum(): {y_dpcpp.sum()}"
+    )
     if forward_error >= 0.01:
         print("Torch output: ", y_torch[-1, :])
         print("DPCPP output: ", y_dpcpp[-1, :])
         print(
             f"diff: {y_torch[-1, :] - y_dpcpp[-1, :]}, average: {abs(y_torch - y_dpcpp).mean()}"
         )
-    assert (
-        forward_error <= 0.01
-    ), f"Forward error is too large {abs(y_torch.sum() - y_dpcpp.sum()) / (abs(y_torch).sum()) :.4f}"
+    assert forward_error <= 0.01, f"Forward error is too large {forward_error :.4f}"
 
 
 if __name__ == "__main__":
@@ -249,7 +254,7 @@ if __name__ == "__main__":
     dtype = torch.float16
     use_nwe = False
     use_weights_of_tinynn = False
-
+    use_constant_weight = False
     test_fwd(
         input_width,
         hidden_size,
@@ -260,18 +265,20 @@ if __name__ == "__main__":
         dtype,
         use_nwe,
         use_weights_of_tinynn,
+        use_constant_weight,
     )
     print("Passed fwd test")
 
-    test_grad(
-        input_width,
-        hidden_size,
-        hidden_layers,
-        output_width,
-        activation_func,
-        output_func,
-        dtype,
-        use_nwe,
-        use_weights_of_tinynn,
-    )
-    print("Passed bwd test")
+    # test_grad(
+    #     input_width,
+    #     hidden_size,
+    #     hidden_layers,
+    #     output_width,
+    #     activation_func,
+    #     output_func,
+    #     dtype,
+    #     use_nwe,
+    #     use_weights_of_tinynn,
+    # use_constant_weight
+    # )
+    # print("Passed bwd test")

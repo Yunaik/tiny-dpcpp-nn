@@ -168,7 +168,7 @@ def create_models(
     backend_param_dtype,
     use_nwe,
     use_weights_of_tinynn,
-    constant_weight=False,
+    use_constant_weight=False,
 ):
 
     # Create and test CustomMLP
@@ -180,7 +180,7 @@ def create_models(
         output_func,
         dtype=backend_param_dtype,
         nwe_as_ref=use_nwe,
-        constant_weight=constant_weight,
+        constant_weight=use_constant_weight,
     )
 
     network_config = {
@@ -216,11 +216,29 @@ def create_models(
         )
 
     if use_weights_of_tinynn:
-        weights = model_dpcpp.get_reshaped_params()
+        weights = get_unpacked_params(model_dpcpp, model_dpcpp.params)
         model_torch.set_weights(weights)
     else:
+        weight_val = 1
+        for layer in model_torch.layers:
+            if hasattr(layer, "weight"):
+                num_weights = (
+                    layer.weight.numel()
+                )  # Number of elements in the weight tensor
+                linspace_weights = (
+                    torch.linspace(
+                        weight_val,
+                        weight_val + num_weights - 1,
+                        num_weights,
+                        dtype=layer.weight.dtype,
+                    ).reshape_as(layer.weight)
+                    * 0.001
+                )
+                layer.weight = torch.nn.Parameter(linspace_weights)
+                weight_val += (
+                    num_weights  # Update the starting value for the next layer
+                )
         weights = model_torch.get_all_weights()
         model_dpcpp.set_params(weights.flatten())
-
     model_torch.to(model_dpcpp.device)
     return model_dpcpp, model_torch

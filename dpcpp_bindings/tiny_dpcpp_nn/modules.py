@@ -180,7 +180,7 @@ class Module(torch.nn.Module):
 
     def set_params(self, params=None):
         if not self.tnn_module.n_params():
-            return
+            raise RuntimeError("Network has no parameters.")
 
         packed = params is None
 
@@ -239,7 +239,7 @@ class Module(torch.nn.Module):
             # added for NWE and encoding
             info.update({"encoding_config": self.encoding_config})
 
-        self.set_params()
+        # self.set_params()
         output = _module_function.apply(
             self.tnn_module,
             padded_tensor.contiguous(),
