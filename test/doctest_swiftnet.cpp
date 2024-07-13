@@ -159,6 +159,8 @@ void test_grads(sycl::queue &q, const int input_width, const int output_width, c
     loss.fill(0.0f).wait();
 
     DeviceMatrix<float> targets(batch_size, padded_output_width, q);
+    targets.fill(0.0f).wait();
+
     targets.fillSubmatrixWithValue(0, 0, batch_size, output_width, static_cast<float>(target_val));
 
     L2Loss<T> l2_loss;
@@ -190,6 +192,7 @@ void test_grads(sycl::queue &q, const int input_width, const int output_width, c
 
     // sanity check whether set_weights worked
     DeviceMatrix<T> network_input(batch_size, network.get_input_width(), q);
+    network_input.fill((T)0).wait();
     std::vector<T> input_full = mlp_cpp::stack_vector(mlp_cpp::convert_vector<double, T>(input_ref), batch_size);
     network_input.copy_from_host(input_full).wait();
 
@@ -1252,9 +1255,6 @@ TEST_CASE("Swiftnet - test grad output padded") {
     const int output_dim = 8;
     int batch_size = 8;
 
-    // test_grads<sycl::ext::oneapi::bfloat16, 16>(q, 16, output_dim, n_hidden_layers, batch_size, "linear",
-    // "linear",
-    //                                             "random");
     auto test_function = [=](sycl::queue &q, const int width, const int batch_size, std::string activation,
                              std::string output_activation, std::string weight_init_mode) {
         typedef sycl::ext::oneapi::bfloat16 T;

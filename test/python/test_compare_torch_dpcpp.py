@@ -105,7 +105,6 @@ def test_grad(
     iterations=1,
     n_steps=1,  # if this is too large, there will be accumulated error (weights aren't the same, thus the loss is not the same etc)
 ):
-
     for iter_ in range(iterations):
         print(f"Starting iteration {iter_}")
         if iter_ == 0:
@@ -152,8 +151,6 @@ def test_grad(
         grads_dpcpp = grads_dpcpp[0][0]
         grads_torch = grads_torch[0]
 
-        print(f"Grads dpcpp: {grads_dpcpp}")
-        print(f"Grads torch: {grads_torch}")
         assert len(grads_dpcpp) == len(grads_torch)
         for layer in range(len(grads_dpcpp)):
             assert (
@@ -227,11 +224,6 @@ def test_fwd(
         abs(y_torch).sum(), eps
     )
 
-    print("Torch output: ", y_torch[-1, :])
-    print("DPCPP output: ", y_dpcpp[-1, :])
-    print(
-        f"Forward error: {forward_error}, y_torch.sum(): {y_torch.sum()}, y_dpcpp.sum(): {y_dpcpp.sum()}"
-    )
     if forward_error >= 0.01:
         print("Torch output: ", y_torch[-1, :])
         print("DPCPP output: ", y_dpcpp[-1, :])
@@ -269,16 +261,16 @@ if __name__ == "__main__":
     )
     print("Passed fwd test")
 
-    # test_grad(
-    #     input_width,
-    #     hidden_size,
-    #     hidden_layers,
-    #     output_width,
-    #     activation_func,
-    #     output_func,
-    #     dtype,
-    #     use_nwe,
-    #     use_weights_of_tinynn,
-    # use_constant_weight
-    # )
-    # print("Passed bwd test")
+    test_grad(
+        input_width,
+        hidden_size,
+        hidden_layers,
+        output_width,
+        activation_func,
+        output_func,
+        dtype,
+        use_nwe,
+        use_weights_of_tinynn,
+        use_constant_weight,
+    )
+    print("Passed bwd test")
