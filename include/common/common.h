@@ -227,12 +227,28 @@ template <typename T> std::string type_to_string() {
     return "unknown";
 }
 
-template <typename T> std::vector<T> vertical_pack(const std::vector<T> &matrix, int rows, int cols) {
+template <typename T>
+std::vector<T> vertical_pack(std::vector<T> &matrix, int rows, int cols, bool transpose_before_packing) {
     std::vector<T> packed(rows * cols, 0.0); // Preallocate the packed array
+    std::vector<T> transposed_matrix(rows * cols);
+    if (transpose_before_packing) {
+        // Iterate over each element in the original matrix
+        for (int idx = 0; idx < rows * cols; ++idx) {
+            // Calculate the original row (i) and column (j) from the index
+            int i = idx / cols;
+            int j = idx % cols;
+
+            // Calculate the index for the transposed matrix
+            int transposed_idx = j * rows + i;
+
+            // Assign the value to the transposed matrix
+            transposed_matrix[transposed_idx] = matrix[idx];
+        }
+        matrix = transposed_matrix;
+    }
 
     for (int idx = 0; idx < rows * cols; ++idx) {
-        unsigned packed_idx = toPackedLayoutCoord(idx, rows, cols);
-        packed[packed_idx] = matrix[idx]; // Use direct indexing
+        packed[toPackedLayoutCoord(idx, rows, cols)] = matrix[idx];
     }
 
     return packed;
@@ -241,12 +257,14 @@ template <typename T> std::vector<T> vertical_pack(const std::vector<T> &matrix,
 template <typename T>
 std::vector<T> get_packed_weights(std::vector<T> unpacked_weights, int m_n_hidden_layers, int input_width,
                                   int network_width, int output_width) {
+    // NOTE: the packed matrices are transposed additionally
+    bool transpose_before_packing = true;
     std::vector<T> weights_packed;
 
     // Prepare input matrix
     auto input_matrix =
         std::vector<T>(unpacked_weights.begin(), unpacked_weights.begin() + input_width * network_width);
-    weights_packed = vertical_pack(input_matrix, network_width, input_width);
+    weights_packed = vertical_pack(input_matrix, network_width, input_width, transpose_before_packing);
 
     // Prepare hidden layer matrices
     int len_input_matrix = input_matrix.size();
@@ -255,14 +273,15 @@ std::vector<T> get_packed_weights(std::vector<T> unpacked_weights, int m_n_hidde
         auto hidden_matrix_end = hidden_matrix_start + (network_width * network_width);
         auto hidden_matrix = std::vector<T>(unpacked_weights.begin() + hidden_matrix_start,
                                             unpacked_weights.begin() + hidden_matrix_end);
-        std::vector<T> packed_hidden = vertical_pack(hidden_matrix, network_width, network_width);
+        std::vector<T> packed_hidden =
+            vertical_pack(hidden_matrix, network_width, network_width, transpose_before_packing);
         weights_packed.insert(weights_packed.end(), packed_hidden.begin(), packed_hidden.end());
     }
 
     // Prepare output matrix
     auto output_matrix =
         std::vector<T>(unpacked_weights.end() - (network_width * output_width), unpacked_weights.end());
-    std::vector<T> packed_output = vertical_pack(output_matrix, network_width, output_width);
+    std::vector<T> packed_output = vertical_pack(output_matrix, network_width, output_width, transpose_before_packing);
     weights_packed.insert(weights_packed.end(), packed_output.begin(), packed_output.end());
 
     return weights_packed;

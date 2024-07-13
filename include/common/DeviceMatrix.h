@@ -448,15 +448,16 @@ template <typename T> class DeviceMatrices {
         if (src.n() != dest.m() || src.m() != dest.n()) throw std::invalid_argument("Cannot transpose.");
         // TODO: check that the underlying data is actually in the same context.
 
-        T *const new_p = dest.GetPointer();
+        T *const transposed_p = dest.GetPointer();
         T const *const old_p = src.GetPointer();
         const size_t loc_rows = src.m();
         const size_t loc_cols = src.n();
         q.parallel_for(loc_rows * loc_cols, [=](auto idx) {
             const size_t i = idx / loc_cols;
             const size_t j = idx % loc_cols;
-            new_p[toPackedLayoutCoord(j * loc_rows + i, loc_cols, loc_rows)] =
-                old_p[toPackedLayoutCoord(i * loc_cols + j, loc_rows, loc_cols)];
+            int transposed_idx = j * loc_rows + i;
+            transposed_p[toPackedLayoutCoord(idx, loc_cols, loc_rows)] =
+                old_p[toPackedLayoutCoord(transposed_idx, loc_rows, loc_cols)];
         });
     }
 
@@ -475,10 +476,7 @@ template <typename T> class DeviceMatrices {
         const size_t loc_rows = src.m();
         const size_t loc_cols = src.n();
         q.parallel_for(loc_rows * loc_cols, [=](auto idx) {
-             const size_t i = idx / loc_cols;
-             const size_t j = idx % loc_cols;
-             new_p[toPackedLayoutCoord(j * loc_rows + i, loc_cols, loc_rows)] = temp_src[i * loc_cols + j];
-             // new_p[toPackedLayoutCoord(j * loc_rows + i, loc_cols, loc_rows)] = old_p[i * loc_cols + j];
+             new_p[toPackedLayoutCoord(idx, loc_cols, loc_rows)] = temp_src[idx];
          }).wait();
 
         // Free the temporary source buffer

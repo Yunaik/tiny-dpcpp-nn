@@ -376,7 +376,6 @@ template <typename T> class MLP {
     std::vector<T> getUnpackedWeights() const {
         std::vector<T> all_weights;
         for (const Matrix<T> &weight_matrix : weights) {
-
             for (const std::vector<T> &row : weight_matrix.data) {
                 all_weights.insert(all_weights.end(), row.begin(), row.end());
             }

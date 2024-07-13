@@ -175,11 +175,10 @@ template <typename T> class Network : public NetworkBase<T> {
             m_q.parallel_for(padded_input_width * network_width,
                              [=](auto idx) {
                                  const int i = idx / network_width; // rows
-                                 const int j = idx % network_width; // cols
 
                                  if (i >= unpadded_input_width)
-                                     weights.GetPointer()[toPackedLayoutCoord(i * network_width + j, padded_input_width,
-                                                                              network_width)] = static_cast<T>(0);
+                                     weights.GetPointer()[toPackedLayoutCoord(idx, padded_input_width, network_width)] =
+                                         static_cast<T>(0);
                              })
                 .wait();
         }
@@ -188,16 +187,14 @@ template <typename T> class Network : public NetworkBase<T> {
         const int output_matrix_pos = m_weights_matrices.GetNumberOfMatrices() - 1;
         if (unpadded_output_width != padded_output_width) {
             DeviceMatrixView<T> weights = m_weights_matrices.Back();
-            m_q.parallel_for(padded_output_width * network_width,
-                             [=](auto idx) {
-                                 const int i = idx / padded_output_width; // rows
-                                 const int j = idx % padded_output_width; // cols
-
-                                 if (j >= unpadded_output_width)
-                                     weights.GetPointer()[toPackedLayoutCoord(i * padded_output_width + j,
-                                                                              network_width, padded_output_width)] =
-                                         static_cast<T>(0);
-                             })
+            m_q.parallel_for(
+                   padded_output_width * network_width,
+                   [=](auto idx) {
+                       const int j = idx % padded_output_width; // cols
+                       if (j >= unpadded_output_width)
+                           weights.GetPointer()[toPackedLayoutCoord(idx, network_width, padded_output_width)] =
+                               static_cast<T>(0);
+                   })
                 .wait();
         }
     }
