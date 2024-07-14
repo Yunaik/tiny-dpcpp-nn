@@ -98,7 +98,7 @@ def get_reshaped_params(
             layer = vertical_pack(layer)
         elif mode == "unpack":
             layer = vertical_unpack(layer)
-        all_weights_changed.append(layer.to(device))
+        all_weights_changed.append(layer.T.to(device))
     return all_weights_changed
 
 
@@ -114,13 +114,12 @@ def get_unpacked_params(model, weights):
 
 
 def get_grad_params(model):
-    # This funciton unpacks for comparison with torch
+    # This function unpacks for comparison with torch
     grads_all = []
     params_all = []
     for param in model.parameters():
         if param.requires_grad and param.grad is not None:
             gradient = param.grad.clone()
-
             if len(gradient.shape) == 1 or param.data.shape[1] == 1:
                 # for tiny-dpcpp-nn, need to unpack
                 gradient = get_unpacked_params(model, gradient)
@@ -219,25 +218,6 @@ def create_models(
         weights = get_unpacked_params(model_dpcpp, model_dpcpp.params)
         model_torch.set_weights(weights)
     else:
-        weight_val = 1
-        for layer in model_torch.layers:
-            if hasattr(layer, "weight"):
-                num_weights = (
-                    layer.weight.numel()
-                )  # Number of elements in the weight tensor
-                linspace_weights = (
-                    torch.linspace(
-                        weight_val,
-                        weight_val + num_weights - 1,
-                        num_weights,
-                        dtype=layer.weight.dtype,
-                    ).reshape_as(layer.weight)
-                    * 0.001
-                )
-                layer.weight = torch.nn.Parameter(linspace_weights)
-                weight_val += (
-                    num_weights  # Update the starting value for the next layer
-                )
         weights = model_torch.get_all_weights()
         model_dpcpp.set_params(weights.flatten())
     model_torch.to(model_dpcpp.device)

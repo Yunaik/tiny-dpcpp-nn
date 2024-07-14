@@ -372,6 +372,14 @@ template <typename T> class DeviceMatrices {
             DeviceMatrices<T>::Transpose(GetView(iter), ret.GetView(iter), m_q);
         }
     }
+    void PackAndTranspose(DeviceMatrices<T> &ret) const {
+        if (GetNumberOfMatrices() != ret.GetNumberOfMatrices())
+            throw std::invalid_argument("Need to have same number of matrices for transpose");
+
+        for (uint32_t iter = 0; iter < GetNumberOfMatrices(); iter++) {
+            DeviceMatrices<T>::PackAndTranspose(GetView(iter), ret.GetView(iter), m_q);
+        }
+    }
 
     void PackedTranspose(DeviceMatrices<T> &ret) const {
         if (GetNumberOfMatrices() != ret.GetNumberOfMatrices())
@@ -481,6 +489,23 @@ template <typename T> class DeviceMatrices {
 
         // Free the temporary source buffer
         sycl::free(temp_src, q);
+    }
+
+    // Packs data and then transposes
+    static void PackAndTranspose(const DeviceMatrixView<T> &src, DeviceMatrixView<T> dest, sycl::queue &q) {
+        if (src.n() != dest.m() || src.m() != dest.n()) throw std::invalid_argument("Cannot transpose.");
+        // TODO: check that the underlying data is actually in the same context.
+
+        T *const transposed_p = dest.GetPointer();
+        T const *const old_p = src.GetPointer();
+        const size_t loc_rows = src.m();
+        const size_t loc_cols = src.n();
+        q.parallel_for(loc_rows * loc_cols, [=](auto idx) {
+            const size_t i = idx / loc_cols;
+            const size_t j = idx % loc_cols;
+            int transposed_idx = j * loc_rows + i;
+            transposed_p[toPackedLayoutCoord(idx, loc_rows, loc_cols)] = old_p[transposed_idx];
+        });
     }
 
     sycl::queue &m_q;

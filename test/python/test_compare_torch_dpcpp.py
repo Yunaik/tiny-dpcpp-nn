@@ -6,8 +6,8 @@ import pytest
 import pdb
 from src.utils import create_models, compare_matrices, get_grad_params
 
-torch.set_printoptions(precision=10)
-np.set_printoptions(precision=10)
+torch.set_printoptions(precision=3)
+np.set_printoptions(precision=3)
 
 input_sizes = [1, 2, 4, 8, 16]
 output_funcs = ["linear", "sigmoid"]
@@ -245,7 +245,7 @@ if __name__ == "__main__":
     # output_func = "sigmoid"
     dtype = torch.float16
     use_nwe = False
-    use_weights_of_tinynn = False
+    use_weights_of_tinynn = True
     use_constant_weight = False
     test_fwd(
         input_width,

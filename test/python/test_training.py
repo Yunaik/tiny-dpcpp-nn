@@ -2,7 +2,6 @@ import torch
 import pytest
 import intel_extension_for_pytorch
 from torch.utils.data import DataLoader, TensorDataset
-import matplotlib.pyplot as plt
 from src.utils import create_models
 from tiny_dpcpp_nn import Network, Encoding, NetworkWithInputEncoding
 
@@ -496,12 +495,12 @@ def test_network_with_encoding_all(dtype, optimiser):
 
 
 if __name__ == "__main__":
-    dtype = torch.bfloat16
+    dtype = torch.float16
     optimiser = "sgd"
-    # test_regression(dtype, optimiser)
+    test_regression(dtype, optimiser)
 
     optimiser = "sgd"
-    # dtype = torch.float16
+    dtype = torch.float16
     print("Testing network")
     test_network(dtype, optimiser)
 
