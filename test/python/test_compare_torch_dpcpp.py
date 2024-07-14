@@ -238,7 +238,7 @@ if __name__ == "__main__":
     input_width = 16
     hidden_size = 16
     hidden_layers = 1
-    output_width = 16
+    output_width = 1
     # activation_func = "sigmoid"
     activation_func = "linear"
     output_func = "linear"

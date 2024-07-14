@@ -499,10 +499,10 @@ if __name__ == "__main__":
     optimiser = "sgd"
     test_regression(dtype, optimiser)
 
-    optimiser = "sgd"
-    dtype = torch.float16
-    print("Testing network")
-    test_network(dtype, optimiser)
+    # optimiser = "sgd"
+    # dtype = torch.float16
+    # print("Testing network")
+    # test_network(dtype, optimiser)
 
     # print("Testing encoding")
     # test_encoding()

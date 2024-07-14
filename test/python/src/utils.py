@@ -41,7 +41,9 @@ def vertical_unpack(packed_matrix):
 
 def get_reshaped_params(
     weights,
+    n_input_dims,
     width,
+    n_output_dims,
     n_hidden_layers,
     dtype,
     device,
@@ -52,7 +54,6 @@ def get_reshaped_params(
         len(weights.shape) == 1 or weights.shape[1] == 1
     ), "Weights is assumed to be a 1-D vector"
 
-    n_input_dims = width  # because we pad
     input_matrix = (
         weights[: width * n_input_dims]
         .reshape(width, n_input_dims)
@@ -78,7 +79,6 @@ def get_reshaped_params(
 
         hidden_matrices.append(hidden_matrix)
 
-    n_output_dims = width  # because we pad
     output_matrix = (
         weights[-width * n_output_dims :]
         .reshape(width, n_output_dims)
@@ -105,12 +105,33 @@ def get_reshaped_params(
 def get_unpacked_params(model, weights):
     return get_reshaped_params(
         weights,
+        model.n_input_dims,
         model.width,
+        model.n_output_dims,
         model.n_hidden_layers,
         model.backend_param_dtype,
         model.device,
         "unpack",
     )
+
+
+def pad_if_necessary(weight, desired_width):
+    padded_weight = weight
+    # Pad the first dimension if necessary
+    if weight.shape[0] != desired_width:
+        padding = (
+            0,
+            0,
+            0,
+            desired_width - weight.shape[0],
+        )  # pad last dim
+        padded_weight = torch.nn.functional.pad(weight, padding, "constant", 0)
+    # Pad the second dimension if necessary
+    elif weight.shape[1] != desired_width:
+        padding = (0, desired_width - weight.shape[1])  # pad last dim
+        padded_weight = torch.nn.functional.pad(weight, padding, "constant", 0)
+
+    return padded_weight
 
 
 def get_grad_params(model):
@@ -123,6 +144,7 @@ def get_grad_params(model):
             if len(gradient.shape) == 1 or param.data.shape[1] == 1:
                 # for tiny-dpcpp-nn, need to unpack
                 gradient = get_unpacked_params(model, gradient)
+            gradient = pad_if_necessary(gradient, model.width)
             grads_all.append(gradient)
 
         param_data = param.data.clone()
@@ -130,6 +152,7 @@ def get_grad_params(model):
             # for tiny-dpcpp-nn, need to unpack
             param_data = get_unpacked_params(model, param_data)
 
+        param_data = pad_if_necessary(param_data, model.width)
         params_all.append(param_data)
     return grads_all, params_all
 
