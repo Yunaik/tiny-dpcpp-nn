@@ -2,6 +2,8 @@ from src.utils import vertical_pack, vertical_unpack, get_reshaped_params
 import numpy as np
 import pytest
 import torch
+from tiny_dpcpp_nn import Network, NetworkWithInputEncoding
+import random
 
 
 def test_vertical_pack():
@@ -80,8 +82,8 @@ def to_tensor(array, dtype, device):
 
 
 # Test function
-@pytest.mark.parametrize("width", [8, 16, 32])
-@pytest.mark.parametrize("n_hidden_layers", [1, 2])
+@pytest.mark.parametrize("width", [16, 32, 64, 128])
+@pytest.mark.parametrize("n_hidden_layers", [1, 2, 3])
 @pytest.mark.parametrize("mode", ["reshape", "pack", "unpack"])
 def test_reshaped_params_by_shape(width, n_hidden_layers, mode):
     total_elements = (
@@ -117,8 +119,8 @@ def test_reshaped_params_by_shape(width, n_hidden_layers, mode):
 
 
 # Test function
-@pytest.mark.parametrize("width", [8, 16, 32])
-@pytest.mark.parametrize("n_hidden_layers", [1, 2])
+@pytest.mark.parametrize("width", [16, 32, 64, 128])
+@pytest.mark.parametrize("n_hidden_layers", [1, 2, 3])
 @pytest.mark.parametrize("mode", ["reshape", "pack", "unpack"])
 def test_reshaped_params_by_values(width, n_hidden_layers, mode):
     total_elements = (
@@ -170,5 +172,5 @@ if __name__ == "__main__":
     # test_vertical_unpack()
     # test_16x16_pack_unpack()
     # test_16x16_unpack_pack()
-    test_reshaped_params_by_values(32,2, "unpack")
+    test_reshaped_params_by_values(32, 2, "unpack")
     # test_reshaped_params_by_shape(16, 2, "reshape")

@@ -372,6 +372,7 @@ template <typename T> class DeviceMatrices {
             DeviceMatrices<T>::Transpose(GetView(iter), ret.GetView(iter), m_q);
         }
     }
+
     void PackAndTranspose(DeviceMatrices<T> &ret) const {
         if (GetNumberOfMatrices() != ret.GetNumberOfMatrices())
             throw std::invalid_argument("Need to have same number of matrices for transpose");

@@ -4,10 +4,10 @@ import torch
 import intel_extension_for_pytorch
 import pytest
 import pdb
-from src.utils import create_models, compare_matrices, get_grad_params
+from src.utils import create_models, compare_matrices, get_grad_params, is_close
 
-torch.set_printoptions(precision=3)
-np.set_printoptions(precision=3)
+torch.set_printoptions(precision=10)
+np.set_printoptions(precision=10)
 
 input_sizes = [1, 2, 4, 8, 16]
 output_funcs = ["linear", "sigmoid"]
@@ -219,33 +219,47 @@ def test_fwd(
 
     y_torch = model_torch(input_data)
     y_dpcpp = model_dpcpp(input_data)
-    eps = 1e-3
-    forward_error = (abs(y_torch).sum() - abs(y_dpcpp).sum()) / max(
-        abs(y_torch).sum(), eps
-    )
+    # Check for non-finite values in y_torch
+    if not torch.isfinite(y_torch).all():
+        non_finite_indices = torch.nonzero(~torch.isfinite(y_torch), as_tuple=True)[0]
+        for idx in non_finite_indices:
+            print(f"y_torch[{idx}] = {y_torch[idx]}")
+        raise ValueError("Non finite values")
 
-    if forward_error >= 0.01:
+    # Check for non-finite values in y_dpcpp
+    if not torch.isfinite(y_dpcpp).all():
+        non_finite_indices = torch.nonzero(~torch.isfinite(y_dpcpp), as_tuple=True)[0]
+        for idx in non_finite_indices:
+            print(f"y_dpcpp[{idx}] = {y_dpcpp[idx]}")
+        raise ValueError("Non finite values")
+
+    error_is_small, _ = is_close(
+        y_torch.flatten().cpu().detach().numpy(),
+        y_dpcpp.flatten().cpu().detach().numpy(),
+        rtol=1e-4,
+        name="fwd error",
+        print_diff=True,
+    )
+    if not error_is_small:
         print("Torch output: ", y_torch[-1, :])
         print("DPCPP output: ", y_dpcpp[-1, :])
         print(
             f"diff: {y_torch[-1, :] - y_dpcpp[-1, :]}, average: {abs(y_torch - y_dpcpp).mean()}"
         )
-    assert forward_error <= 0.01, f"Forward error is too large {forward_error :.4f}"
 
 
 if __name__ == "__main__":
-
-    input_width = 1
-    hidden_size = 64
+    input_width = 128
+    hidden_size = 128
     hidden_layers = 1
-    output_width = 1
+    output_width = 128
     # activation_func = "sigmoid"
     activation_func = "linear"
     output_func = "linear"
     # output_func = "sigmoid"
     dtype = torch.float16
     use_nwe = False
-    use_weights_of_tinynn = False
+    use_weights_of_tinynn = True
     use_constant_weight = False
     test_fwd(
         input_width,

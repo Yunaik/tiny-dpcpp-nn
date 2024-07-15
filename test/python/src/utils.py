@@ -6,6 +6,31 @@ from tiny_dpcpp_nn import Network, NetworkWithInputEncoding
 import torch
 
 
+def is_close(reference, value, rtol=1e-4, name="", print_diff=False):
+    assert len(reference.shape) == 1, "Reference should be a flat vector"
+    assert len(value.shape) == 1, "Value should be a flat vector"
+
+    max_val = np.maximum(np.max(np.abs(reference)), np.max(np.abs(value)))
+    max_rtol = 0.0
+    # Perform the element-wise comparison
+    isclose = True
+    for i, (a, b) in enumerate(zip(reference, value)):
+        abs_diff = np.abs(a - b)
+        rel_diff = abs_diff / max_val
+        if rel_diff > max_rtol:
+            max_rtol = rel_diff
+        if rel_diff > rtol:
+            isclose = False
+            if print_diff:
+                string = f" of {name}" if name else ""
+                print(f"Element {i}{string}:")
+                print(f"  Value in reference (cuda): {a}")
+                print(f"  Value in value (dpcpp): {b}")
+                print(f"  Absolute difference: {abs_diff}")
+                print(f"  Relative difference: {rel_diff} with rtol {rtol}")
+    return isclose, max_rtol
+
+
 def to_packed_layout_coord(idx, rows, cols):
     assert idx < rows * cols
     i = idx // cols
@@ -122,6 +147,7 @@ def get_grad_params(model):
             if len(gradient.shape) == 1 or param.data.shape[1] == 1:
                 # for tiny-dpcpp-nn, need to unpack
                 gradient = get_unpacked_params(model, gradient)
+
             grads_all.append(gradient)
 
         param_data = param.data.clone()
@@ -132,26 +158,23 @@ def get_grad_params(model):
     return grads_all, params_all
 
 
-def compare_matrices(weights_dpcpp, weights_torch, atol=1e-1, rtol=5e-2):
+def compare_matrices(weights_dpcpp, weights_torch, rtol=1e-3):
     for layer, _ in enumerate(weights_dpcpp):
         assert (
             weights_dpcpp[layer].shape == weights_torch[layer].shape
         ), f"Shape different: dpcpp {weights_dpcpp[layer].shape} and torch {weights_torch[layer].shape}"
-
-        are_close = torch.allclose(
-            weights_dpcpp[layer].to(dtype=torch.float),
-            weights_torch[layer].to(dtype=torch.float),
-            atol=atol,
-        ) or torch.allclose(
-            weights_dpcpp[layer].to(dtype=torch.float),
-            weights_torch[layer].to(dtype=torch.float),
+        are_close, _ = is_close(
+            weights_dpcpp[layer].to(dtype=torch.float).flatten().to("cpu").numpy(),
+            weights_torch[layer].to(dtype=torch.float).flatten().to("cpu").numpy(),
             rtol=rtol,
+            name="",
+            print_diff=True,
         )
         if not are_close:
-            print(f"weights_dpcpp: {weights_dpcpp}")
-            print(f"weights_torch: {weights_torch}")
-            print(f"weights_dpcpp[layer] sum: {weights_dpcpp[layer].sum().sum()}")
-            print(f"weights_torch[layer] sum: {weights_torch[layer].sum().sum()}")
+            print(f"weights_dpcpp: {weights_dpcpp[layer]}")
+            print(f"weights_torch: {weights_torch[layer]}")
+            print(f"weights_dpcpp[{layer}] sum: {weights_dpcpp[layer].sum().sum()}")
+            print(f"weights_torch[{layer}] sum: {weights_torch[layer].sum().sum()}")
         assert are_close
 
 
