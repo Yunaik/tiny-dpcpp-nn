@@ -497,15 +497,17 @@ template <typename T> class DeviceMatrices {
         if (src.n() != dest.m() || src.m() != dest.n()) throw std::invalid_argument("Cannot transpose.");
         // TODO: check that the underlying data is actually in the same context.
 
+        T *temp_src = sycl::malloc_device<T>(src.m() * src.n(), q);
+        q.memcpy(temp_src, src.GetPointer(), src.m() * src.n() * sizeof(T)).wait();
+
         T *const transposed_p = dest.GetPointer();
-        T const *const old_p = src.GetPointer();
         const size_t loc_rows = src.m();
         const size_t loc_cols = src.n();
         q.parallel_for(loc_rows * loc_cols, [=](auto idx) {
             const size_t i = idx / loc_cols;
             const size_t j = idx % loc_cols;
             int transposed_idx = j * loc_rows + i;
-            transposed_p[toPackedLayoutCoord(idx, loc_rows, loc_cols)] = old_p[transposed_idx];
+            transposed_p[toPackedLayoutCoord(idx, loc_rows, loc_cols)] = temp_src[transposed_idx];
         });
     }
 

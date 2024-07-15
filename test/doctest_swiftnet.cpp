@@ -201,11 +201,11 @@ void test_grads(sycl::queue &q, const int input_width, const int output_width, c
 
     auto interm_forw_vec = interm_forw.copy_to_host();
 
-    if (!areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref, 1.0e-2)) {
+    if (!areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref, 1.0e-3)) {
         printVector("interm_forw_vec: ", interm_forw_vec);
         printVector("interm_forw_ref: ", interm_forw_ref);
     }
-    CHECK(areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref, 1.0e-2));
+    CHECK(areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref, 1.0e-3));
 
     interm_forw.copy_from_host(mlp_cpp::convert_vector<double, T>(interm_forw_ref)).wait();
 
@@ -213,12 +213,12 @@ void test_grads(sycl::queue &q, const int input_width, const int output_width, c
 
     auto dL_doutput_vec = dL_doutput.copy_to_host();
 
-    bool grads_within_tolerance = areVectorsWithinTolerance(dL_doutput_vec, stacked_dL_doutput_ref, 1.0e-2);
+    bool grads_within_tolerance = areVectorsWithinTolerance(dL_doutput_vec, stacked_dL_doutput_ref, 1.0e-3);
     if (!grads_within_tolerance) {
         printVector("stacked_dL_doutput_ref", stacked_dL_doutput_ref, 0, -1);
         printVector("dL_doutput_vec", dL_doutput_vec, 0, -1);
     }
-    CHECK(areVectorsWithinTolerance(dL_doutput_vec, stacked_dL_doutput_ref, 1.0e-2));
+    CHECK(areVectorsWithinTolerance(dL_doutput_vec, stacked_dL_doutput_ref, 1.0e-3));
 
     dL_doutput.copy_from_host(mlp_cpp::convert_vector<double, T>(stacked_dL_doutput_ref)).wait();
 
@@ -249,13 +249,13 @@ void test_grads(sycl::queue &q, const int input_width, const int output_width, c
     }
 
     CHECK(areVectorsWithinTolerance(interm_backw_vec, interm_backw_ref,
-                                    1.0e-2)); // sanity check, being tested in test_interm_backw
+                                    1.0e-3)); // sanity check, being tested in test_interm_backw
 
-    if (!areVectorsWithinTolerance(grad_vec, grads_ref, 1.0e-2)) {
+    if (!areVectorsWithinTolerance(grad_vec, grads_ref, 1.0e-3)) {
         printVector("grads_ref", grads_ref);
         printVector("grad_vec", grad_vec);
     }
-    CHECK(areVectorsWithinTolerance(grad_vec, grads_ref, 1.0e-2));
+    CHECK(areVectorsWithinTolerance(grad_vec, grads_ref, 1.0e-3));
 }
 
 template <typename T, int WIDTH>
@@ -334,11 +334,11 @@ void test_interm_backw(sycl::queue &q, const int input_width, const int output_w
     q.wait();
     auto interm_forw_vec = interm_forw.copy_to_host();
 
-    if (!areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref, 1.0e-2)) {
+    if (!areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref, 1.0e-3)) {
         printVector("interm_forw_vec: ", interm_forw_vec);
         printVector("interm_forw_ref: ", interm_forw_ref);
     }
-    CHECK(areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref, 1.0e-2));
+    CHECK(areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref, 1.0e-3));
 
     interm_forw.copy_from_host(mlp_cpp::convert_vector<double, T>(interm_forw_ref)).wait();
 
@@ -364,11 +364,11 @@ void test_interm_backw(sycl::queue &q, const int input_width, const int output_w
             interm_backw_ref.push_back(value); // Add each element to the flattened vector
         }
 
-        if (!areVectorsWithinTolerance(interm_backw_sliced_actual, interm_backw_ref, 1.0e-2)) {
+        if (!areVectorsWithinTolerance(interm_backw_sliced_actual, interm_backw_ref, 1.0e-3)) {
             printVector("interm_backw_ref: ", interm_backw_ref);
             printVector("interm_backw_vec: ", interm_backw_sliced_actual);
         }
-        CHECK(areVectorsWithinTolerance(interm_backw_sliced_actual, interm_backw_ref, 1.0e-2));
+        CHECK(areVectorsWithinTolerance(interm_backw_sliced_actual, interm_backw_ref, 1.0e-3));
     }
 }
 
@@ -448,11 +448,11 @@ void test_dl_dinput(sycl::queue &q, const int input_width, const int output_widt
     q.wait();
     auto interm_forw_vec = interm_forw.copy_to_host();
 
-    if (!areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref, 1.0e-2)) {
+    if (!areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref, 1.0e-3)) {
         printVector("interm_forw_vec: ", interm_forw_vec, batch_size * WIDTH, -1);
         printVector("interm_forw_ref: ", interm_forw_ref, batch_size * WIDTH, -1);
     }
-    CHECK(areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref, 1.0e-2));
+    CHECK(areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref, 1.0e-3));
 
     interm_forw.copy_from_host(mlp_cpp::convert_vector<double, T>(interm_forw_ref)).wait();
 
@@ -469,11 +469,11 @@ void test_dl_dinput(sycl::queue &q, const int input_width, const int output_widt
 
     auto dL_dinput_ref_stacked = mlp_cpp::stack_vector(dL_dinput_ref, batch_size);
 
-    if (!areVectorsWithinTolerance(dL_dinput_vec, dL_dinput_ref_stacked, 1.0e-2)) {
+    if (!areVectorsWithinTolerance(dL_dinput_vec, dL_dinput_ref_stacked, 1.0e-3)) {
         printVector("dL_dinput_ref_stacked: ", dL_dinput_ref_stacked);
         printVector("dL_dinput_vec: ", dL_dinput_vec);
     }
-    CHECK(areVectorsWithinTolerance(dL_dinput_vec, dL_dinput_ref_stacked, 1.0e-2));
+    CHECK(areVectorsWithinTolerance(dL_dinput_vec, dL_dinput_ref_stacked, 1.0e-3));
 }
 
 template <typename T, int WIDTH>
@@ -529,19 +529,19 @@ void test_loss(sycl::queue &q, const int input_width, const int output_width, co
     std::vector<T> dL_doutput_vec = dL_doutput.copy_to_host();
     std::vector<double> stacked_dL_doutput_ref = mlp_cpp::stack_vector(dL_doutput_ref, batch_size);
 
-    if (!areVectorsWithinTolerance(dL_doutput_vec, stacked_dL_doutput_ref, 1.0e-2)) {
+    if (!areVectorsWithinTolerance(dL_doutput_vec, stacked_dL_doutput_ref, 1.0e-3)) {
         printVector("stacked_dL_doutput_ref", stacked_dL_doutput_ref);
         printVector("dL_doutput_vec", dL_doutput_vec);
     }
-    CHECK(areVectorsWithinTolerance(dL_doutput_vec, stacked_dL_doutput_ref, 1.0e-2));
+    CHECK(areVectorsWithinTolerance(dL_doutput_vec, stacked_dL_doutput_ref, 1.0e-3));
     std::vector<double> stacked_loss_ref = mlp_cpp::stack_vector(loss_ref, batch_size);
     auto loss_vec = loss.copy_to_host();
 
-    if (!areVectorsWithinTolerance(loss_vec, stacked_loss_ref, 1.0e-2)) {
+    if (!areVectorsWithinTolerance(loss_vec, stacked_loss_ref, 1.0e-3)) {
         printVector("stacked_loss_ref", stacked_loss_ref);
         printVector("loss_vec", loss_vec);
     }
-    CHECK(areVectorsWithinTolerance(loss_vec, stacked_loss_ref, 1.0e-2));
+    CHECK(areVectorsWithinTolerance(loss_vec, stacked_loss_ref, 1.0e-3));
 }
 
 template <typename T, int WIDTH>
@@ -597,13 +597,13 @@ void test_interm_fwd(sycl::queue &q, const int input_width, const int output_wid
 
     auto interm_forw_ref = mlp_cpp::repeat_inner_vectors<double>(fwd_result_ref, batch_size);
     auto interm_forw_vec = interm_forw.copy_to_host();
-    if (!areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref, 1.0e-2)) {
+    if (!areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref, 1.0e-3)) {
         printVector("interm_forw_vec", interm_forw_vec, WIDTH * batch_size);
         printVector("interm_forw_ref", interm_forw_ref, WIDTH * batch_size);
     }
 
     CHECK(interm_forw_vec.size() == interm_forw_ref.size());
-    CHECK(areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref, 1.0e-2));
+    CHECK(areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref, 1.0e-3));
 }
 
 template <typename T, int WIDTH>
@@ -680,15 +680,15 @@ void test_trainer(sycl::queue &q, const int input_width, const int output_width,
 
     auto interm_forw_vec = interm_forw.copy_to_host();
     auto interm_forw_ref_vec = interm_forw_ref.copy_to_host();
-    CHECK(areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref_vec, 1.0e-2));
+    CHECK(areVectorsWithinTolerance(interm_forw_vec, interm_forw_ref_vec, 1.0e-3));
 
     auto interm_backw_vec = interm_backw.copy_to_host();
     auto interm_backw_ref_vec = interm_backw_ref.copy_to_host();
-    CHECK(areVectorsWithinTolerance(interm_backw_vec, interm_backw_ref_vec, 1.0e-2));
+    CHECK(areVectorsWithinTolerance(interm_backw_vec, interm_backw_ref_vec, 1.0e-3));
 
     auto grad_vec = grads.copy_to_host();
     auto grad_ref_vec = grads_ref.copy_to_host();
-    CHECK(areVectorsWithinTolerance(grad_vec, grad_ref_vec, 1.0e-2));
+    CHECK(areVectorsWithinTolerance(grad_vec, grad_ref_vec, 1.0e-3));
 }
 
 // TEST_CASE("Swiftnet - Constructor") {
