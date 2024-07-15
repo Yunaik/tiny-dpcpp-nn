@@ -417,7 +417,7 @@ def run_test_network_with_custom_encoding(
     final_accuracy = evaluate(nwe, X, y)
     print(f"Final Accuracy: {final_accuracy:.4f}")
     assert (
-        final_accuracy > 0.8
+        final_accuracy > 0.95
     )  # Adjusted expectation as perfect accuracy may not be realistic
 
 
@@ -500,10 +500,10 @@ if __name__ == "__main__":
     optimiser = "sgd"
     test_regression(dtype, optimiser)
 
-    # optimiser = "sgd"
-    # dtype = torch.float16
-    # print("Testing network")
-    # test_network(dtype, optimiser)
+    optimiser = "sgd"
+    dtype = torch.float16
+    print("Testing network")
+    test_network(dtype, optimiser)
 
     # print("Testing encoding")
     # test_encoding()
