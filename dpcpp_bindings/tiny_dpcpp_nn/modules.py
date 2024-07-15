@@ -150,6 +150,7 @@ class Module(torch.nn.Module):
     def __init__(
         self,
         device="xpu",
+        store_params_as_full_precision=True,
         input_dtype=torch.float16,
         backend_param_dtype=torch.float16,
     ):
@@ -157,7 +158,7 @@ class Module(torch.nn.Module):
         self.device = device
         self.input_dtype = input_dtype
         self.backend_param_dtype = backend_param_dtype
-
+        self.store_params_as_full_precision = store_params_as_full_precision
         if backend_param_dtype == torch.float16:
             self.loss_scale = 128.0
         else:
@@ -168,7 +169,12 @@ class Module(torch.nn.Module):
         if self.tnn_module.n_params():
             initial_params = self.tnn_module.initial_params()
             # This explicitely creates a tensor whose memory is managed by PyTorch in modules.py
-            cloned_params = initial_params.clone().detach().to(torch.float32)
+            params_dtype = (
+                torch.float32
+                if self.store_params_as_full_precision
+                else self.backend_param_dtype
+            )
+            cloned_params = initial_params.clone().detach().to(params_dtype)
             self.params = torch.nn.Parameter(cloned_params, requires_grad=True)
         else:
             print(
@@ -239,7 +245,7 @@ class Module(torch.nn.Module):
             # added for NWE and encoding
             info.update({"encoding_config": self.encoding_config})
 
-        # self.set_params()
+        self.set_params()
         output = _module_function.apply(
             self.tnn_module,
             padded_tensor.contiguous(),
@@ -256,6 +262,7 @@ class Network(Module):
         n_input_dims,
         n_output_dims,
         network_config,
+        store_params_as_full_precision=True,
         device="xpu",
         input_dtype=torch.float16,
         backend_param_dtype=torch.float16,
@@ -274,6 +281,7 @@ class Network(Module):
         super().__init__(
             device=device,
             input_dtype=input_dtype,
+            store_params_as_full_precision=store_params_as_full_precision,
             backend_param_dtype=backend_param_dtype,
         )
 
@@ -297,6 +305,7 @@ class NetworkWithInputEncoding(Module):
         network_config,
         encoding_config,
         device="xpu",
+        store_params_as_full_precision=True,
         input_dtype=torch.float,
         backend_param_dtype=torch.float16,
     ):
@@ -323,6 +332,7 @@ class NetworkWithInputEncoding(Module):
         super().__init__(
             device=device,
             input_dtype=input_dtype,
+            store_params_as_full_precision=store_params_as_full_precision,
             backend_param_dtype=backend_param_dtype,
         )
 
@@ -347,6 +357,7 @@ class Encoding(Module):
         encoding_config,
         device="xpu",
         input_dtype=torch.float,
+        store_params_as_full_precision=True,
         backend_param_dtype=torch.float,
     ):
         self.n_input_dims = n_input_dims
@@ -370,6 +381,7 @@ class Encoding(Module):
         super().__init__(
             device=device,
             input_dtype=input_dtype,
+            store_params_as_full_precision=store_params_as_full_precision,
             backend_param_dtype=backend_param_dtype,
         )
 

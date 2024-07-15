@@ -91,6 +91,7 @@ def test_regression(dtype, optimiser):
         input_dtype=torch.float if USE_NWE else dtype,
         backend_param_dtype=dtype,
         use_weights_of_tinynn=True,
+        store_params_as_full_precision=False,
     )
 
     def criterion(y_pred, y_true):
@@ -297,7 +298,7 @@ def test_network(dtype, optimiser):
     # Evaluate after training
     final_accuracy = evaluate(mlp, X, y)
     print(f"Final Accuracy for Network: {final_accuracy:.4f}")
-    assert final_accuracy == 0.8
+    assert final_accuracy >= 0.9
 
 
 @pytest.mark.parametrize(

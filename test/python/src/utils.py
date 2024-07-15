@@ -163,6 +163,7 @@ def create_models(
     use_nwe,
     use_weights_of_tinynn,
     use_constant_weight=False,
+    store_params_as_full_precision=False,
 ):
 
     # Create and test CustomMLP
@@ -197,6 +198,7 @@ def create_models(
             n_output_dims=output_size,
             encoding_config=encoding_config,
             network_config=network_config,
+            store_params_as_full_precision=store_params_as_full_precision,
             input_dtype=input_dtype,
             backend_param_dtype=backend_param_dtype,
         )
@@ -205,6 +207,7 @@ def create_models(
             n_input_dims=input_size,
             n_output_dims=output_size,
             network_config=network_config,
+            store_params_as_full_precision=store_params_as_full_precision,
             input_dtype=input_dtype,
             backend_param_dtype=backend_param_dtype,
         )
