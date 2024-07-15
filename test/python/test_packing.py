@@ -93,7 +93,7 @@ def test_reshaped_params_by_shape(width, n_hidden_layers, mode):
     device = torch.device("cpu")
 
     reshaped_params = get_reshaped_params(
-        weights, width, n_hidden_layers, dtype, device, mode
+        weights, width, width, width, n_hidden_layers, dtype, device, mode
     )
     if mode == "reshape":
         assert len(reshaped_params) == n_hidden_layers + 1
@@ -130,10 +130,12 @@ def test_reshaped_params_by_values(width, n_hidden_layers, mode):
     device = torch.device("cpu")
     if mode == "unpack":
         reshaped_params = get_reshaped_params(
-            weights, width, n_hidden_layers, dtype, device, "pack"
+            weights, width, width, width, n_hidden_layers, dtype, device, "pack"
         )  # need to pack first
         reshaped_params = get_reshaped_params(
             torch.tensor(reshaped_params).flatten().squeeze(),
+            width,
+            width,
             width,
             n_hidden_layers,
             dtype,
@@ -142,7 +144,7 @@ def test_reshaped_params_by_values(width, n_hidden_layers, mode):
         )
     else:
         reshaped_params = get_reshaped_params(
-            weights, width, n_hidden_layers, dtype, device, mode
+            weights, width, width, width, n_hidden_layers, dtype, device, mode
         )
 
     assert len(reshaped_params) == n_hidden_layers + 1

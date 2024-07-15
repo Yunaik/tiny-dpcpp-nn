@@ -186,7 +186,10 @@ class Module(torch.nn.Module):
 
     def set_params(self, params=None):
         if not self.tnn_module.n_params():
-            raise RuntimeError("Network has no parameters.")
+            if params is not None:
+                raise RuntimeError("Network has no parameters. Cannot set params")
+            else:  # don't do anything if no params to be set
+                return
 
         packed = params is None
 

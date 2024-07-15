@@ -101,7 +101,7 @@ def test_grad(
     dtype,
     use_nwe,
     use_weights_of_tinynn,
-    use_constant_weight,
+    use_constant_weight=False,
     iterations=1,
     n_steps=1,  # if this is too large, there will be accumulated error (weights aren't the same, thus the loss is not the same etc)
 ):
@@ -197,7 +197,7 @@ def test_fwd(
     dtype,
     use_nwe,
     use_weights_of_tinynn,
-    use_constant_weight,
+    use_constant_weight=False,
 ):
     # Generate random input data for testing
     torch.manual_seed(123)
@@ -236,7 +236,7 @@ def test_fwd(
 if __name__ == "__main__":
 
     input_width = 1
-    hidden_size = 16
+    hidden_size = 64
     hidden_layers = 1
     output_width = 1
     # activation_func = "sigmoid"
@@ -245,7 +245,7 @@ if __name__ == "__main__":
     # output_func = "sigmoid"
     dtype = torch.float16
     use_nwe = False
-    use_weights_of_tinynn = True
+    use_weights_of_tinynn = False
     use_constant_weight = False
     test_fwd(
         input_width,
