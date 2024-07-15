@@ -48,6 +48,7 @@ def get_reshaped_params(
     dtype,
     device,
     mode,  # reshape, pack, unpack
+    transpose_before_operation=True,  # this is necessary to convert from torch to dpcpp
 ):
     assert (
         len(weights.shape) == 1 or weights.shape[1] == 1
@@ -88,7 +89,9 @@ def get_reshaped_params(
         elif mode == "unpack":
             layer = vertical_unpack(layer)
 
-        layer_append = layer.T.to(device)
+        layer_append = (
+            layer.T.to(device) if transpose_before_operation else layer.to(device)
+        )
 
         if idx == (len(all_weights) - 1):
             layer_append = layer_append[:n_output_dims, :]

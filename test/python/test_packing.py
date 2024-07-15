@@ -93,7 +93,7 @@ def test_reshaped_params_by_shape(width, n_hidden_layers, mode):
     device = torch.device("cpu")
 
     reshaped_params = get_reshaped_params(
-        weights, width, width, width, n_hidden_layers, dtype, device, mode
+        weights, width, width, width, n_hidden_layers, dtype, device, mode, False
     )
     if mode == "reshape":
         assert len(reshaped_params) == n_hidden_layers + 1
@@ -130,10 +130,10 @@ def test_reshaped_params_by_values(width, n_hidden_layers, mode):
     device = torch.device("cpu")
     if mode == "unpack":
         reshaped_params = get_reshaped_params(
-            weights, width, width, width, n_hidden_layers, dtype, device, "pack"
+            weights, width, width, width, n_hidden_layers, dtype, device, "pack", False
         )  # need to pack first
         reshaped_params = get_reshaped_params(
-            torch.tensor(reshaped_params).flatten().squeeze(),
+            torch.stack(reshaped_params).flatten().squeeze(),
             width,
             width,
             width,
@@ -141,10 +141,11 @@ def test_reshaped_params_by_values(width, n_hidden_layers, mode):
             dtype,
             device,
             mode,
+            False,
         )
     else:
         reshaped_params = get_reshaped_params(
-            weights, width, width, width, n_hidden_layers, dtype, device, mode
+            weights, width, width, width, n_hidden_layers, dtype, device, mode, False
         )
 
     assert len(reshaped_params) == n_hidden_layers + 1
@@ -159,7 +160,6 @@ def test_reshaped_params_by_values(width, n_hidden_layers, mode):
             np.testing.assert_array_equal(layer, reference_matrix)
         elif mode == "pack":
             expected_values = vertical_pack(reference_matrix)
-            print(expected_values)
             np.testing.assert_array_equal(layer, expected_values)
         elif mode == "unpack":
             np.testing.assert_array_equal(layer, reference_matrix)
@@ -170,5 +170,5 @@ if __name__ == "__main__":
     # test_vertical_unpack()
     # test_16x16_pack_unpack()
     # test_16x16_unpack_pack()
-    test_reshaped_params_by_values(16, 1, "pack")
+    test_reshaped_params_by_values(32,2, "unpack")
     # test_reshaped_params_by_shape(16, 2, "reshape")
