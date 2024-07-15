@@ -49,17 +49,11 @@ def get_reshaped_params(
     device,
     mode,  # reshape, pack, unpack
 ):
-
     assert (
         len(weights.shape) == 1 or weights.shape[1] == 1
     ), "Weights is assumed to be a 1-D vector"
 
-    input_matrix = (
-        weights[: width * n_input_dims]
-        .reshape(width, n_input_dims)
-        .to(dtype)
-        .to(device)
-    )
+    input_matrix = weights[: width * width].reshape(width, width).to(dtype).to(device)
 
     len_input_matrix = input_matrix.shape[0] * input_matrix.shape[1]
     hidden_layer_size = width * width
@@ -79,26 +73,26 @@ def get_reshaped_params(
 
         hidden_matrices.append(hidden_matrix)
 
-    output_matrix = (
-        weights[-width * n_output_dims :]
-        .reshape(width, n_output_dims)
-        .to(dtype)
-        .to(device)
-    )
+    output_matrix = weights[-width * width :].reshape(width, width).to(dtype).to(device)
 
     all_weights = []
 
     all_weights.append(input_matrix)
     all_weights.extend(hidden_matrices)
-    all_weights.append(output_matrix[:n_output_dims, ...])
+    all_weights.append(output_matrix)
 
     all_weights_changed = []
-    for layer in all_weights:
+    for idx, layer in enumerate(all_weights):
         if mode == "pack":
             layer = vertical_pack(layer)
         elif mode == "unpack":
             layer = vertical_unpack(layer)
-        all_weights_changed.append(layer.T.to(device))
+
+        layer_append = layer.T.to(device)
+
+        if idx == (len(all_weights) - 1):
+            layer_append = layer_append[:n_output_dims, :]
+        all_weights_changed.append(layer_append)
     return all_weights_changed
 
 
@@ -115,25 +109,6 @@ def get_unpacked_params(model, weights):
     )
 
 
-def pad_if_necessary(weight, desired_width):
-    padded_weight = weight
-    # Pad the first dimension if necessary
-    if weight.shape[0] != desired_width:
-        padding = (
-            0,
-            0,
-            0,
-            desired_width - weight.shape[0],
-        )  # pad last dim
-        padded_weight = torch.nn.functional.pad(weight, padding, "constant", 0)
-    # Pad the second dimension if necessary
-    elif weight.shape[1] != desired_width:
-        padding = (0, desired_width - weight.shape[1])  # pad last dim
-        padded_weight = torch.nn.functional.pad(weight, padding, "constant", 0)
-
-    return padded_weight
-
-
 def get_grad_params(model):
     # This function unpacks for comparison with torch
     grads_all = []
@@ -144,15 +119,12 @@ def get_grad_params(model):
             if len(gradient.shape) == 1 or param.data.shape[1] == 1:
                 # for tiny-dpcpp-nn, need to unpack
                 gradient = get_unpacked_params(model, gradient)
-            gradient = pad_if_necessary(gradient, model.width)
             grads_all.append(gradient)
 
         param_data = param.data.clone()
         if len(param_data.shape) == 1 or param_data.shape[1] == 1:
             # for tiny-dpcpp-nn, need to unpack
             param_data = get_unpacked_params(model, param_data)
-
-        param_data = pad_if_necessary(param_data, model.width)
         params_all.append(param_data)
     return grads_all, params_all
 
@@ -161,7 +133,7 @@ def compare_matrices(weights_dpcpp, weights_torch, atol=1e-1, rtol=5e-2):
     for layer, _ in enumerate(weights_dpcpp):
         assert (
             weights_dpcpp[layer].shape == weights_torch[layer].shape
-        ), f"Shape different: {weights_dpcpp[layer].shape} x {weights_torch[layer].shape}"
+        ), f"Shape different: dpcpp {weights_dpcpp[layer].shape} and torch {weights_torch[layer].shape}"
 
         are_close = torch.allclose(
             weights_dpcpp[layer].to(dtype=torch.float),

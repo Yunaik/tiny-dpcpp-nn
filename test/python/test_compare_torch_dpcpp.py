@@ -235,7 +235,7 @@ def test_fwd(
 
 if __name__ == "__main__":
 
-    input_width = 16
+    input_width = 1
     hidden_size = 16
     hidden_layers = 1
     output_width = 1

@@ -31,7 +31,7 @@ class MLP(torch.nn.Module):
         self.output_activation = output_activation
 
         # Input layer
-        input_dim = hidden_sizes[0]
+        input_dim = hidden_sizes[0]  # we pad in forward
         input_layer = torch.nn.Linear(
             input_dim, hidden_sizes[0], bias=BIAS, dtype=self.dtype
         )
@@ -108,7 +108,7 @@ class MLP(torch.nn.Module):
             assert weight.dtype == self.dtype
             assert (
                 self.layers[i].weight.shape == weight.shape
-            ), f"Self layer shape: {self.layers[i].weight.shape}, passed shape: {weight.shape}"
+            ), f"In layer {i} - self layer shape: {self.layers[i].weight.shape}, passed shape: {weight.shape}"
             self.layers[i].weight = torch.nn.Parameter(weight)
 
     def get_all_weights(self):
