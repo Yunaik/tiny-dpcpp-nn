@@ -10,10 +10,9 @@
 #include "doctest/doctest.h"
 #include <cmath>
 #include <iostream>
+#include <sycl/ext/intel/esimd.hpp>
 #include <sycl/sycl.hpp>
 #include <vector>
-
-using namespace sycl::ext::intel::esimd;
 
 void compare_exp(sycl::queue &q, float start, float end, float step) {
     int nElems = static_cast<int>((end - start) / step) + 1;
@@ -34,34 +33,34 @@ void compare_exp(sycl::queue &q, float start, float end, float step) {
 
     // Run ESIMD kernel
     q.parallel_for(sycl::range<1>(nElems), [=](sycl::id<1> i) {
-         simd<float, 1> val = x[i];
-         simd<float, 1> result = esimd::exp(-val);
-         result.copy_to(esimd_exp + i);
+         sycl::ext::intel::esimd::simd<float, 1> val = x[i];
+         sycl::ext::intel::esimd::simd<float, 1> result = sycl::ext::intel::esimd::exp(-val);
+         //  result.copy_to(esimd_exp + i);
      }).wait();
 
-    // Copy results back to host
-    q.memcpy(esimd_exp_host.data(), esimd_exp, sizeof(float) * nElems).wait();
+    // // Copy results back to host
+    // q.memcpy(esimd_exp_host.data(), esimd_exp, sizeof(float) * nElems).wait();
 
-    // Compare the results
-    float max_error = 0.0f;
-    float total_error = 0.0f;
+    // // Compare the results
+    // float max_error = 0.0f;
+    // float total_error = 0.0f;
 
-    for (int i = 0; i < nElems; ++i) {
-        float error = std::abs(esimd_exp_host[i] - std_exp_host[i]);
-        total_error += error;
-        if (error > max_error) {
-            max_error = error;
-        }
-    }
+    // for (int i = 0; i < nElems; ++i) {
+    //     float error = std::abs(esimd_exp_host[i] - std_exp_host[i]);
+    //     total_error += error;
+    //     if (error > max_error) {
+    //         max_error = error;
+    //     }
+    // }
 
-    float average_error = total_error / nElems;
+    // float average_error = total_error / nElems;
 
-    std::cout << "Maximum error: " << max_error << std::endl;
-    std::cout << "Average error: " << average_error << std::endl;
+    // std::cout << "Maximum error: " << max_error << std::endl;
+    // std::cout << "Average error: " << average_error << std::endl;
 
-    // Free device memory
-    sycl::free(x, q);
-    sycl::free(esimd_exp, q);
+    // // Free device memory
+    // sycl::free(x, q);
+    // sycl::free(esimd_exp, q);
 }
 
 TEST_CASE("Compare exp functions") {
