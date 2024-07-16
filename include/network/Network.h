@@ -178,7 +178,7 @@ template <typename T> class Network : public NetworkBase<T> {
 
                                  if (i >= unpadded_input_width)
                                      weights.GetPointer()[toPackedLayoutCoord(idx, padded_input_width, network_width)] =
-                                         static_cast<T>(0);
+                                         static_cast<T>(0.0f);
                              })
                 .wait();
         }
@@ -193,7 +193,7 @@ template <typename T> class Network : public NetworkBase<T> {
                        const int j = idx % padded_output_width; // cols
                        if (j >= unpadded_output_width)
                            weights.GetPointer()[toPackedLayoutCoord(idx, network_width, padded_output_width)] =
-                               static_cast<T>(0);
+                               static_cast<T>(0.0f);
                    })
                 .wait();
         }
