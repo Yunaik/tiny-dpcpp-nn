@@ -70,7 +70,7 @@ template <> struct XMXCType<bf16> {
 template <> struct XMXCType<sycl::half> {
 #if TARGET_DEVICE == 0
     typedef float CType;
-    //typedef sycl::half CType;
+    // typedef sycl::half CType;
 #elif TARGET_DEVICE == 1
     typedef float CType;
 #endif
@@ -152,51 +152,53 @@ class EsimdKernels {
             cgh.depends_on(deps);
             sycl::ext::oneapi::experimental::properties properties{
                 sycl::ext::intel::experimental::fp_control<sycl::ext::intel::experimental::fp_mode::denorm_hf_allow>};
-            cgh.parallel_for(sycl::nd_range<1>(M / TM, ITEMS_IN_WG), properties, [=](sycl::nd_item<1> item) SYCL_ESIMD_KERNEL {
-                const size_t loc_row_offset = item.get_global_linear_id() * TM;
+            cgh.parallel_for(
+                sycl::nd_range<1>(M / TM, ITEMS_IN_WG), properties, [=](sycl::nd_item<1> item) SYCL_ESIMD_KERNEL {
+                    const size_t loc_row_offset = item.get_global_linear_id() * TM;
 
-                simd<T, TM * WIDTH> As;
-                loadRow<TM, TK, cache_hint::uncached, cache_hint::uncached>(input.GetPointer(loc_row_offset, 0), As);
+                    simd<T, TM * WIDTH> As;
+                    loadRow<TM, TK, cache_hint::uncached, cache_hint::uncached>(input.GetPointer(loc_row_offset, 0),
+                                                                                As);
 
-                // store backward activated input to the last intermediate output
-                if constexpr (output_activation == Activation::None) {
-                } else {
-                    // Compute derivative of activation function
-                    applyBackwardActivation<output_activation, TM, TK, TM * WIDTH>(
-                        intermediate_forward.GetElementPointer(n_hidden_layers + 1, loc_row_offset, 0), As, As);
-                    // n_hidden_layers +1 because the first (0 index) matrix in intermediate_forward (view of
-                    // DeviceMatrices object) is input
-                }
+                    // store backward activated input to the last intermediate output
+                    if constexpr (output_activation == Activation::None) {
+                    } else {
+                        // Compute derivative of activation function
+                        applyBackwardActivation<output_activation, TM, TK, TM * WIDTH>(
+                            intermediate_forward.GetElementPointer(n_hidden_layers + 1, loc_row_offset, 0), As, As);
+                        // n_hidden_layers +1 because the first (0 index) matrix in intermediate_forward (view of
+                        // DeviceMatrices object) is input
+                    }
 
-                // store activated in intermediate output
-                storeRow<TM, TK, cache_hint::uncached, cache_hint::uncached>(
-                    As, intermediate_backward.GetElementPointer(n_hidden_layers, loc_row_offset, 0));
-                simd<Tc, TM * WIDTH> Cs;
-                // we are also doing output->last hidden layer
-
-                for (int layer = n_hidden_layers; layer > 0; layer--) {
-                    Cs = static_cast<Tc>(0);
-
-                    MAD<TM, TK>(As, weights.GetMatrixPointer(layer), Cs);
-
-                    applyBackwardActivation<activation, TM, TK>(
-                        intermediate_forward.GetElementPointer(layer, loc_row_offset, 0), Cs, As);
-
+                    // store activated in intermediate output
                     storeRow<TM, TK, cache_hint::uncached, cache_hint::uncached>(
-                        As, intermediate_backward.GetElementPointer(layer - 1, loc_row_offset, 0));
-                }
-                if (dL_dinput.has_value()) {
-                    Cs = static_cast<Tc>(0);
+                        As, intermediate_backward.GetElementPointer(n_hidden_layers, loc_row_offset, 0));
+                    simd<Tc, TM * WIDTH> Cs;
+                    // we are also doing output->last hidden layer
 
-                    MAD<TM, TK>(As, weights.GetMatrixPointer(0), Cs);
+                    for (int layer = n_hidden_layers; layer > 0; layer--) {
+                        Cs = static_cast<Tc>(0);
 
-                    applyBackwardActivation<Activation::None, TM, TK>(
-                        intermediate_forward.GetElementPointer(0, loc_row_offset, 0), Cs, As);
+                        MAD<TM, TK>(As, weights.GetMatrixPointer(layer), Cs);
 
-                    storeRow<TM, TK, cache_hint::uncached, cache_hint::uncached>(
-                        As, dL_dinput->GetPointer(loc_row_offset, 0));
-                }
-            });
+                        applyBackwardActivation<activation, TM, TK>(
+                            intermediate_forward.GetElementPointer(layer, loc_row_offset, 0), Cs, As);
+
+                        storeRow<TM, TK, cache_hint::uncached, cache_hint::uncached>(
+                            As, intermediate_backward.GetElementPointer(layer - 1, loc_row_offset, 0));
+                    }
+                    if (dL_dinput.has_value()) {
+                        Cs = static_cast<Tc>(0);
+
+                        MAD<TM, TK>(As, weights.GetMatrixPointer(0), Cs);
+
+                        applyBackwardActivation<Activation::None, TM, TK>(
+                            intermediate_forward.GetElementPointer(0, loc_row_offset, 0), Cs, As);
+
+                        storeRow<TM, TK, cache_hint::uncached, cache_hint::uncached>(
+                            As, dL_dinput->GetPointer(loc_row_offset, 0));
+                    }
+                });
         });
         // NOTE: MKL gemm_batch is slower.
         std::vector<sycl::event> events(n_hidden_layers + 1);
@@ -522,53 +524,56 @@ class EsimdKernels {
             cgh.depends_on(deps);
             sycl::ext::oneapi::experimental::properties properties{
                 sycl::ext::intel::experimental::fp_control<sycl::ext::intel::experimental::fp_mode::denorm_hf_allow>};
-            cgh.parallel_for(sycl::nd_range<1>(M / TM, ITEMS_IN_WG), properties, [=](sycl::nd_item<1> item) SYCL_ESIMD_KERNEL {
-                const size_t loc_row_offset = item.get_global_linear_id() * TM;
+            cgh.parallel_for(
+                sycl::nd_range<1>(M / TM, ITEMS_IN_WG), properties, [=](sycl::nd_item<1> item) SYCL_ESIMD_KERNEL {
+                    const size_t loc_row_offset = item.get_global_linear_id() * TM;
 
-                // we store blocks contiguously
-                simd<T, TM * WIDTH> As;
-                loadRow<TM, TK, cache_hint::uncached, cache_hint::uncached>(input.GetPointer(loc_row_offset, 0), As);
+                    // we store blocks contiguously
+                    simd<T, TM * WIDTH> As;
+                    loadRow<TM, TK, cache_hint::uncached, cache_hint::uncached>(input.GetPointer(loc_row_offset, 0),
+                                                                                As);
 
-                // if not inference activate and store in intermediate output
-                if constexpr (!INFERENCE) {
-                    storeRow<TM, TK, cache_hint::uncached, cache_hint::uncached>(
-                        As, intermediate_output.GetElementPointer(0, loc_row_offset, 0)); // saving non-activated input
-                }
+                    // if not inference activate and store in intermediate output
+                    if constexpr (!INFERENCE) {
+                        storeRow<TM, TK, cache_hint::uncached, cache_hint::uncached>(
+                            As,
+                            intermediate_output.GetElementPointer(0, loc_row_offset, 0)); // saving non-activated input
+                    }
 
-                simd<Tc, TM * WIDTH> Cs;
-                for (int layer = 0; layer < n_hidden_layers; layer++) {
-                    // reset result matrices
+                    simd<Tc, TM * WIDTH> Cs;
+                    for (int layer = 0; layer < n_hidden_layers; layer++) {
+                        // reset result matrices
+                        Cs = static_cast<Tc>(0);
+
+                        MAD<TM, TK>(As, weights.GetMatrixPointer(layer), Cs);
+
+                        // activate and save
+                        applyActivation<activation, TM, TK>(Cs, As);
+
+                        if constexpr (!INFERENCE)
+                            storeRow<TM, TK, cache_hint::uncached, cache_hint::uncached>(
+                                As, intermediate_output.GetElementPointer(
+                                        layer + 1, loc_row_offset, 0) /*+ (layer + 1) * M * WIDTH + layer_offset_A*/);
+                    }
+
+                    // generate output, i.e. last GEMM
                     Cs = static_cast<Tc>(0);
 
-                    MAD<TM, TK>(As, weights.GetMatrixPointer(layer), Cs);
+                    MAD<TM, TK>(As, weights.GetMatrixPointer(n_hidden_layers), Cs);
 
-                    // activate and save
-                    applyActivation<activation, TM, TK>(Cs, As);
+                    // activate
+                    applyActivation<output_activation, TM, TK>(Cs, As);
 
+                    // save to HBM
                     if constexpr (!INFERENCE)
-                        storeRow<TM, TK, cache_hint::uncached, cache_hint::uncached>(
+                        storeRow<TM, TK, cache_hint::uncached, cache_hint::write_back>(
                             As, intermediate_output.GetElementPointer(
-                                    layer + 1, loc_row_offset, 0) /*+ (layer + 1) * M * WIDTH + layer_offset_A*/);
-                }
-
-                // generate output, i.e. last GEMM
-                Cs = static_cast<Tc>(0);
-
-                MAD<TM, TK>(As, weights.GetMatrixPointer(n_hidden_layers), Cs);
-
-                // activate
-                applyActivation<output_activation, TM, TK>(Cs, As);
-
-                // save to HBM
-                if constexpr (!INFERENCE)
-                    storeRow<TM, TK, cache_hint::uncached, cache_hint::write_back>(
-                        As, intermediate_output.GetElementPointer(
-                                n_hidden_layers + 1, loc_row_offset,
-                                0) /*+ (n_hidden_layers + 1) * M * WIDTH + layer_offset_A*/);
-                else if constexpr (INFERENCE) // storing at the beginning since no intermediate results
-                    storeRow<TM, TK, cache_hint::uncached, cache_hint::write_back>(
-                        As, intermediate_output.GetElementPointer(0, loc_row_offset, 0));
-            });
+                                    n_hidden_layers + 1, loc_row_offset,
+                                    0) /*+ (n_hidden_layers + 1) * M * WIDTH + layer_offset_A*/);
+                    else if constexpr (INFERENCE) // storing at the beginning since no intermediate results
+                        storeRow<TM, TK, cache_hint::uncached, cache_hint::write_back>(
+                            As, intermediate_output.GetElementPointer(0, loc_row_offset, 0));
+                });
         });
 
         return {e};
