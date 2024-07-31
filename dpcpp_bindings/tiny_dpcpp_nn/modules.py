@@ -232,7 +232,6 @@ class Module(torch.nn.Module):
                 )
             ).to(dtype=self.input_dtype)
         info = {"is_in_eval_mode": not self.training}
-
         if hasattr(self, "n_hidden_layers"):
             # added for NWE and Network
             info.update(

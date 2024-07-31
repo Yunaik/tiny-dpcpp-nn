@@ -432,7 +432,6 @@ template <typename T, int WIDTH> class NetworkModule : public Module {
 
     torch::Tensor inference(torch::Tensor input_tensor) override {
         CHECK_XPU(input_tensor);
-
         const size_t batch_size = input_tensor.sizes()[0];
         DeviceMatrixView<T> input_dm(batch_size, network_.get_input_width(), network_.get_input_width(),
                                      reinterpret_cast<T *>(input_tensor.data_ptr()));

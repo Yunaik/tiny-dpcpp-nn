@@ -179,7 +179,7 @@ int main() {
         // benchmark_all<sycl::half, 32>(q, 1);
 
         std::cout << "Sycl::half, width 64" << std::endl;
-        benchmark_all<sycl::half, 64>(q, 1);
+        benchmark_all<sycl::ext::oneapi::bfloat16, 64>(q, 1);
 
         // std::cout << "Sycl::half, width 128" << std::endl;
         // benchmark_all<sycl::half, 128>(q, 1);

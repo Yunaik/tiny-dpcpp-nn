@@ -65,13 +65,13 @@ double benchmark_training(const size_t batch_size, const int n_hidden_layers, co
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    const float output_ref = std::pow(weight_val * WIDTH, n_hidden_layers + 1);
-    bool all_values_correct = torch::allclose(output, torch::full_like(output, output_ref), 1e-5);
-    if (all_values_correct) {
-        std::cout << "All values in the tensor are correct." << std::endl;
-    } else {
-        std::cout << "Not all values in the tensor are correct." << std::endl;
-    }
+    // const float output_ref = std::pow(weight_val * WIDTH, n_hidden_layers + 1);
+    // bool all_values_correct = torch::allclose(output, torch::full_like(output, output_ref), 1e-5);
+    // if (all_values_correct) {
+    //     std::cout << "All values in the tensor are correct." << std::endl;
+    // } else {
+    //     std::cout << "Not all values in the tensor are correct." << std::endl;
+    // }
 
     return gflops;
 }

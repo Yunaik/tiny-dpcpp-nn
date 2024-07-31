@@ -110,7 +110,7 @@ def get_args():
         "n_steps",
         nargs="?",
         type=int,
-        default=1001,
+        default=5001,
         help="Number of training steps",
     )
     parser.add_argument(
@@ -184,7 +184,7 @@ if __name__ == "__main__":
     prev_time = time.perf_counter()
 
     batch_size = 2**10
-    interval = 10
+    interval = 1000
 
     print(f"Beginning optimization with {args.n_steps} training steps.")
 
@@ -219,22 +219,22 @@ if __name__ == "__main__":
             loss_val = loss.item()
             torch.xpu.synchronize()
             elapsed_time = time.perf_counter() - prev_time
-            print(f"Step#{i}: loss={loss_val} time={int(elapsed_time*1000000)}[µs]")
+            print(f"Step#{i}: loss={loss_val} time={elapsed_time:4}[s]")
 
-            path = f"{i}.jpg"
-            print(f"Writing '{path}'... ", end="")
-            with torch.no_grad():
-                write_image(
-                    path,
-                    model(xy)
-                    .reshape(img_shape)
-                    .clamp(0.0, 1.0)
-                    .detach()
-                    .cpu()
-                    .to(torch.float)
-                    .numpy(),
-                )
-            print("done.")
+            # path = f"{i}.jpg"
+            # print(f"Writing '{path}'... ", end="")
+            # with torch.no_grad():
+            #     write_image(
+            #         path,
+            #         model(xy)
+            #         .reshape(img_shape)
+            #         .clamp(0.0, 1.0)
+            #         .detach()
+            #         .cpu()
+            #         .to(torch.float)
+            #         .numpy(),
+            #     )
+            # print("done.")
 
             # Ignore the time spent saving the image
             prev_time = time.perf_counter()

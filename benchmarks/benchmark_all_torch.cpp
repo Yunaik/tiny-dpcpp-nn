@@ -156,31 +156,31 @@ int main() {
         MPI_Init(NULL, NULL);
         // ----------Benchmark for different workloads----------
 
-        std::cout << "Sycl::half, width 16" << std::endl;
-        benchmark_all<sycl::half, 16>(false);
+        // std::cout << "Sycl::half, width 16" << std::endl;
+        // benchmark_all<sycl::half, 16>(false);
 
-        std::cout << "Sycl::half, width 32" << std::endl;
-        benchmark_all<sycl::half, 32>(false);
+        // std::cout << "Sycl::half, width 32" << std::endl;
+        // benchmark_all<sycl::half, 32>(false);
+
+        // std::cout << "Sycl::half, width 64" << std::endl;
+        // benchmark_all<sycl::half, 64>(false);
+
+        // std::cout << "Sycl::half, width 128" << std::endl;
+        // benchmark_all<sycl::half, 128>(false);
+
+        // // ----------Benchmark over batch sizes----------
+
+        // std::cout << "Sycl::half, width 16" << std::endl;
+        // benchmark_all<sycl::half, 16>(true);
+
+        // std::cout << "Sycl::half, width 32" << std::endl;
+        // benchmark_all<sycl::half, 32>(true);
 
         std::cout << "Sycl::half, width 64" << std::endl;
-        benchmark_all<sycl::half, 64>(false);
+        benchmark_all<sycl::ext::oneapi::bfloat16, 64>(true);
 
-        std::cout << "Sycl::half, width 128" << std::endl;
-        benchmark_all<sycl::half, 128>(false);
-
-        // ----------Benchmark over batch sizes----------
-
-        std::cout << "Sycl::half, width 16" << std::endl;
-        benchmark_all<sycl::half, 16>(true);
-
-        std::cout << "Sycl::half, width 32" << std::endl;
-        benchmark_all<sycl::half, 32>(true);
-
-        std::cout << "Sycl::half, width 64" << std::endl;
-        benchmark_all<sycl::half, 64>(true);
-
-        std::cout << "Sycl::half, width 128" << std::endl;
-        benchmark_all<sycl::half, 128>(true);
+        // std::cout << "Sycl::half, width 128" << std::endl;
+        // benchmark_all<sycl::half, 128>(true);
         MPI_Finalize();
 
     } catch (const std::exception &e) {
