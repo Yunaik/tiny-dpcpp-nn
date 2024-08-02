@@ -221,20 +221,20 @@ if __name__ == "__main__":
             elapsed_time = time.perf_counter() - prev_time
             print(f"Step#{i}: loss={loss_val} time={elapsed_time:4}[s]")
 
-            # path = f"{i}.jpg"
-            # print(f"Writing '{path}'... ", end="")
-            # with torch.no_grad():
-            #     write_image(
-            #         path,
-            #         model(xy)
-            #         .reshape(img_shape)
-            #         .clamp(0.0, 1.0)
-            #         .detach()
-            #         .cpu()
-            #         .to(torch.float)
-            #         .numpy(),
-            #     )
-            # print("done.")
+            path = f"{i}.jpg"
+            print(f"Writing '{path}'... ", end="")
+            with torch.no_grad():
+                write_image(
+                    path,
+                    model(xy)
+                    .reshape(img_shape)
+                    .clamp(0.0, 1.0)
+                    .detach()
+                    .cpu()
+                    .to(torch.float)
+                    .numpy(),
+                )
+            print("done.")
 
             # Ignore the time spent saving the image
             prev_time = time.perf_counter()

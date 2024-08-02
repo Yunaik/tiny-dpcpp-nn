@@ -51,8 +51,7 @@ def train_model(model, x_train, y_train, n_steps):
             ).to(DEVICE_NAME)
             y_predicted_all.append(y_pred.detach().cpu().to(torch.float))
             optimizer.zero_grad()
-            # loss.backward()
-            y_pred.backward(torch.ones_like(y_pred))
+            loss.backward()
 
             grads_all, params_all = get_grad_params(model)
             grads.append(grads_all)
@@ -113,8 +112,8 @@ def test_grad(
                 torch.tensor(BATCH_SIZE * [0.001 for _ in range(input_size)])
                 .to(DEVICE_NAME)
                 .reshape(BATCH_SIZE, -1)
-            )
-            y_train = torch.ones([BATCH_SIZE, output_size]).to(DEVICE_NAME)
+            ) * 0 + 1.0
+            y_train = torch.ones([BATCH_SIZE, output_size]).to(DEVICE_NAME) * 0 + 0.1
         else:
             x_train = torch.rand([BATCH_SIZE, input_size]).to(DEVICE_NAME)
             y_train = torch.rand([BATCH_SIZE, output_size]).to(DEVICE_NAME)
@@ -133,7 +132,6 @@ def test_grad(
             use_weights_of_tinynn=use_weights_of_tinynn,
             use_constant_weight=use_constant_weight,
         )
-
         loss_dpcpp, y_dpcpp, grads_dpcpp, params_dpcpp = train_model(
             model_dpcpp, x_train, y_train, n_steps
         )
@@ -238,7 +236,7 @@ def test_fwd(
         y_dpcpp.flatten().cpu().detach().numpy(),
         rtol=1e-3,
         name="fwd error",
-        print_diff=True,
+        print_diff=False,
     )
     if not error_is_small:
         print("Torch output: ", y_torch[-1, :])
@@ -253,13 +251,13 @@ if __name__ == "__main__":
     hidden_size = 16
     hidden_layers = 1
     output_width = 16
+    activation_func = "linear"
     # activation_func = "relu"
-    activation_func = "relu"
     # output_func = "linear"
     output_func = "sigmoid"
     dtype = torch.float16
     use_nwe = False
-    use_weights_of_tinynn = True
+    use_weights_of_tinynn = False
     use_constant_weight = True
     test_fwd(
         input_width,

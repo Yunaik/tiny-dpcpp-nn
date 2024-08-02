@@ -168,7 +168,7 @@ def compare_matrices(weights_dpcpp, weights_torch, rtol=1e-3):
             weights_torch[layer].to(dtype=torch.float).flatten().to("cpu").numpy(),
             rtol=rtol,
             name="",
-            print_diff=True,
+            print_diff=False,
         )
         if not are_close:
             print(f"weights_dpcpp: {weights_dpcpp[layer]}")
@@ -191,6 +191,10 @@ def create_models(
     use_constant_weight=False,
     store_params_as_full_precision=False,
 ):
+    if use_constant_weight and use_weights_of_tinynn:
+        raise ValueError(
+            f"Constant weights are only set when using MLP. Set use_weights_of_tinynn to False"
+        )
 
     # Create and test CustomMLP
     model_torch = MLP(

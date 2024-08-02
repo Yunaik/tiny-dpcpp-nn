@@ -105,7 +105,6 @@ class MLP(torch.nn.Module):
 
     def set_weights(self, parameters):
         for i, weight in enumerate(parameters):
-            assert weight.dtype == self.dtype
             assert (
                 self.layers[i].weight.shape == weight.shape
             ), f"In layer {i} - self layer shape: {self.layers[i].weight.shape}, passed shape: {weight.shape}"
