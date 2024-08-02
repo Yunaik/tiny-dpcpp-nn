@@ -74,8 +74,8 @@ double benchmark_training(const size_t batch_size, const int n_hidden_layers, co
     for (int iter = 0; iter < n_iterations; iter++) {
         dependencies =
             train.training_step(inputs, outputs_backw, losses, out_inter_forw, out_inter_backw, dependencies);
+        q.wait();
     }
-    q.wait();
     MPI_Barrier(MPI_COMM_WORLD);
     const auto end_time = std::chrono::steady_clock::now();
 

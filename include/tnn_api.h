@@ -456,7 +456,7 @@ template <typename T, int WIDTH> class NetworkModule : public Module {
                                              batch_size, network_.get_network_width(), batch_size,
                                              network_.get_output_width(), interm_forw_ptr_);
         network_.forward_pass(input_dm, output_network, {});
-        this->sycl_queue_.wait();
+        // this->sycl_queue_.wait();
         return xpu::dpcpp::fromUSM((output_network.GetMatrixPointer(network_.get_n_hidden_layers() + 1)),
                                    torch_type<T>::dtype,
                                    {static_cast<long>(batch_size), static_cast<long>(network_.get_output_width())});
@@ -499,7 +499,7 @@ template <typename T, int WIDTH> class NetworkModule : public Module {
         }
 
         network_.backward_pass(dL_doutput, net_gradients_.GetViews(), interm_bwd, interm_fwd, {}, dL_dinput);
-        this->sycl_queue_.wait();
+        // this->sycl_queue_.wait();
 
         if (pack_gradient) {
             net_gradients_.PackAndTranspose(net_gradients_);
@@ -551,7 +551,7 @@ template <typename T, int WIDTH> class NetworkModule : public Module {
             dL_dinput_ptr_ = sycl::malloc_device<T>(n_elems_dldinput, this->sycl_queue_);
 
             max_batch_size_ = batch_size;
-            this->sycl_queue_.wait();
+            // this->sycl_queue_.wait();
         }
     }
 

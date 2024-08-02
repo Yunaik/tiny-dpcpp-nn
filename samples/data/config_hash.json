@@ -22,7 +22,7 @@
     "network": {
         "otype": "FullyFusedMLP",
         "activation": "ReLU",
-        "output_activation": "None",
+        "output_activation": "sigmoid",
         "n_neurons": 32,
         "n_hidden_layers": 2
     }
