@@ -54,6 +54,11 @@ def train_model(model, x_train, y_train, n_steps):
             # loss.backward()
             y_pred.backward(torch.ones_like(y_pred) * 0.1)
 
+            # Access the gradients of intermediate layers
+            if hasattr(model, "activations"):
+                for i, activation in enumerate(model.activations):
+                    print(f"Gradients of activation {i}:", activation.grad)
+
             grads_all, params_all = get_grad_params(model)
             print(f"grads_all: {grads_all}")
             grads.append(grads_all)
@@ -254,13 +259,13 @@ if __name__ == "__main__":
     hidden_layers = 1
     output_width = 16
     # activation_func = "sigmoid"
-    activation_func = "relu"
+    activation_func = "linear"
     # output_func = "relu"
-    output_func = "relu"
+    output_func = "linear"
     dtype = torch.float16
     use_nwe = False
     use_weights_of_tinynn = False
-    weight_mode = None
+    weight_mode = "constant"
     # test_fwd(
     #     input_width,
     #     hidden_size,

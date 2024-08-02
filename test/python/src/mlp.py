@@ -95,6 +95,8 @@ class MLP(torch.nn.Module):
                 device=x_changed_dtype.device,
             )  # zeros, such that the bwd pass through padded vals also equals zero
         x_changed_dtype = torch.cat((x_changed_dtype, padded_vals), dim=1)
+
+        self.activations = []  # Store activations for gradient retention
         for i, layer in enumerate(self.layers):
             if i == len(self.layers) - 1:
                 x_changed_dtype = self._apply_activation(
@@ -104,6 +106,8 @@ class MLP(torch.nn.Module):
                 x_changed_dtype = self._apply_activation(
                     layer(x_changed_dtype), self.activation_func
                 )
+            x_changed_dtype.retain_grad()  # Retain gradient for this activation
+            self.activations.append(x_changed_dtype)
 
         return x_changed_dtype
 
