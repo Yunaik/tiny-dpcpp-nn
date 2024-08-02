@@ -16,7 +16,7 @@ class MLP(torch.nn.Module):
         output_activation=None,
         nwe_as_ref=False,  # NetworkWithEncoding (padded input as ones) is used as ref
         dtype=torch.bfloat16,
-        constant_weight=False,
+        weight_mode="constant",
         weight_val=0.1,
     ):
         super().__init__()
@@ -35,8 +35,7 @@ class MLP(torch.nn.Module):
         input_layer = torch.nn.Linear(
             input_dim, hidden_sizes[0], bias=BIAS, dtype=self.dtype
         )
-        if constant_weight:
-            torch.nn.init.constant_(input_layer.weight, weight_val)
+        self._initialize_weights(input_layer, weight_mode, weight_val)
         self.layers.append(input_layer)
 
         # Hidden layers
@@ -44,17 +43,40 @@ class MLP(torch.nn.Module):
             hidden_layer = torch.nn.Linear(
                 hidden_sizes[i - 1], hidden_sizes[i], bias=BIAS, dtype=self.dtype
             )
-            if constant_weight:
-                torch.nn.init.constant_(hidden_layer.weight, weight_val)
+            self._initialize_weights(
+                hidden_layer,
+                weight_mode,
+                weight_val,
+            )
             self.layers.append(hidden_layer)
 
         # Output layer
         output_layer = torch.nn.Linear(
             hidden_sizes[-1], output_size, bias=BIAS, dtype=self.dtype
         )
-        if constant_weight:
-            torch.nn.init.constant_(output_layer.weight, weight_val)
+        self._initialize_weights(
+            output_layer,
+            weight_mode,
+            weight_val,
+        )
         self.layers.append(output_layer)
+
+    def _initialize_weights(
+        self,
+        layer,
+        weight_mode,
+        weight_val,
+    ):
+        if weight_mode == "constant":
+            torch.nn.init.constant_(layer.weight, weight_val)
+        elif weight_mode == "linspace":
+            num_elements = layer.weight.numel()
+            linspace_vals = torch.linspace(
+                -weight_val, weight_val, num_elements, dtype=self.dtype
+            )
+            layer.weight.data = linspace_vals.view_as(layer.weight)
+        else:
+            torch.nn.init.kaiming_uniform_(layer.weight, a=np.sqrt(5))
 
     def forward(self, x):
         x_changed_dtype = x.to(self.dtype)

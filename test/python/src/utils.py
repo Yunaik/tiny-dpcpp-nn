@@ -188,12 +188,12 @@ def create_models(
     backend_param_dtype,
     use_nwe,
     use_weights_of_tinynn,
-    use_constant_weight=False,
+    weight_mode,
     store_params_as_full_precision=False,
 ):
-    if use_constant_weight and use_weights_of_tinynn:
+    if weight_mode and use_weights_of_tinynn:
         raise ValueError(
-            f"Constant weights are only set when using MLP. Set use_weights_of_tinynn to False"
+            f"Weight mode are only set when using MLP. Set use_weights_of_tinynn to False"
         )
 
     # Create and test CustomMLP
@@ -205,7 +205,7 @@ def create_models(
         output_func,
         dtype=backend_param_dtype,
         nwe_as_ref=use_nwe,
-        constant_weight=use_constant_weight,
+        weight_mode=weight_mode,
     )
 
     network_config = {

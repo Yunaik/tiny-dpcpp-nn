@@ -102,7 +102,7 @@ def test_grad(
     dtype,
     use_nwe,
     use_weights_of_tinynn,
-    use_constant_weight=False,
+    weight_mode=None,
     iterations=1,
     n_steps=1,  # if this is too large, there will be accumulated error (weights aren't the same, thus the loss is not the same etc)
 ):
@@ -132,7 +132,7 @@ def test_grad(
             backend_param_dtype=dtype,
             use_nwe=use_nwe,
             use_weights_of_tinynn=use_weights_of_tinynn,
-            use_constant_weight=use_constant_weight,
+            weight_mode=weight_mode,
         )
         loss_dpcpp, y_dpcpp, grads_dpcpp, params_dpcpp = train_model(
             model_dpcpp, x_train, y_train, n_steps
@@ -197,7 +197,7 @@ def test_fwd(
     dtype,
     use_nwe,
     use_weights_of_tinynn,
-    use_constant_weight=False,
+    weight_mode=None,
 ):
     # Generate random input data for testing
     torch.manual_seed(123)
@@ -212,7 +212,7 @@ def test_fwd(
         backend_param_dtype=dtype,
         use_nwe=use_nwe,
         use_weights_of_tinynn=use_weights_of_tinynn,
-        use_constant_weight=use_constant_weight,
+        weight_mode=weight_mode,
     )
     model_torch.to(DEVICE_NAME)
     model_dpcpp.to(DEVICE_NAME)
@@ -253,27 +253,27 @@ if __name__ == "__main__":
     hidden_size = 16
     hidden_layers = 1
     output_width = 16
-    activation_func = "sigmoid"
-    # activation_func = "relu"
+    # activation_func = "sigmoid"
+    activation_func = "relu"
     # output_func = "relu"
-    output_func = "linear"
+    output_func = "relu"
     dtype = torch.float16
     use_nwe = False
     use_weights_of_tinynn = False
-    use_constant_weight = True
-    test_fwd(
-        input_width,
-        hidden_size,
-        hidden_layers,
-        output_width,
-        activation_func,
-        output_func,
-        dtype,
-        use_nwe,
-        use_weights_of_tinynn,
-        use_constant_weight,
-    )
-    print("Passed fwd test")
+    weight_mode = None
+    # test_fwd(
+    #     input_width,
+    #     hidden_size,
+    #     hidden_layers,
+    #     output_width,
+    #     activation_func,
+    #     output_func,
+    #     dtype,
+    #     use_nwe,
+    #     use_weights_of_tinynn,
+    #     weight_mode,
+    # )
+    # print("Passed fwd test")
 
     test_grad(
         input_width,
@@ -285,6 +285,6 @@ if __name__ == "__main__":
         dtype,
         use_nwe,
         use_weights_of_tinynn,
-        use_constant_weight,
+        weight_mode,
     )
     print("Passed bwd test")
