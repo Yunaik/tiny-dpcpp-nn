@@ -271,7 +271,7 @@ def test_network(dtype, optimiser):
     # Initialize the MLP
     network_config = {
         "activation": "relu",
-        "output_activation": "linear",
+        "output_activation": "relu",
         "n_neurons": hidden_size,
         "n_hidden_layers": hidden_layers,
     }
@@ -500,10 +500,10 @@ if __name__ == "__main__":
     optimiser = "sgd"
     test_regression(dtype, optimiser)
 
-    optimiser = "sgd"
-    dtype = torch.float16
-    print("Testing network")
-    test_network(dtype, optimiser)
+    # optimiser = "sgd"
+    # dtype = torch.float16
+    # print("Testing network")
+    # test_network(dtype, optimiser)
 
     # print("Testing encoding")
     # test_encoding()

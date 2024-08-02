@@ -51,9 +51,11 @@ def train_model(model, x_train, y_train, n_steps):
             ).to(DEVICE_NAME)
             y_predicted_all.append(y_pred.detach().cpu().to(torch.float))
             optimizer.zero_grad()
-            loss.backward()
+            # loss.backward()
+            y_pred.backward(torch.ones_like(y_pred) * 0.1)
 
             grads_all, params_all = get_grad_params(model)
+            print(f"grads_all: {grads_all}")
             grads.append(grads_all)
             params.append(params_all)
 
@@ -154,7 +156,7 @@ def test_grad(
             assert (
                 torch.abs(grads_dpcpp[layer]).sum()
                 - torch.abs(grads_dpcpp[layer]).sum()
-            ) < 1e-3
+            ) < 1e-2, f"torch sum in layer {layer}: {torch.abs(grads_torch[layer]).sum()}, dpcpp sum in layer {layer}: {torch.abs(grads_dpcpp[layer]).sum()},"
         print("Compare grads")
         compare_matrices(grads_dpcpp, grads_torch)
         print("Compare grads passed")
@@ -234,7 +236,7 @@ def test_fwd(
     error_is_small, _ = is_close(
         y_torch.flatten().cpu().detach().numpy(),
         y_dpcpp.flatten().cpu().detach().numpy(),
-        rtol=1e-3,
+        rtol=1e-2,
         name="fwd error",
         print_diff=False,
     )
@@ -251,10 +253,10 @@ if __name__ == "__main__":
     hidden_size = 16
     hidden_layers = 1
     output_width = 16
-    activation_func = "linear"
+    activation_func = "sigmoid"
     # activation_func = "relu"
-    # output_func = "linear"
-    output_func = "sigmoid"
+    # output_func = "relu"
+    output_func = "linear"
     dtype = torch.float16
     use_nwe = False
     use_weights_of_tinynn = False

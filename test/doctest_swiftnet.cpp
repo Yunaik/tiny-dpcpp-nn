@@ -28,6 +28,8 @@ Activation get_activation_from_string(std::string activation) {
         network_activation = Activation::Sigmoid;
     } else if (activation == "linear") {
         network_activation = Activation::None;
+    } else {
+        throw std::invalid_argument("Activation not known: " + activation);
     }
     return network_activation;
 }

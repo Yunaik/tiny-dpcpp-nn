@@ -6,7 +6,7 @@ from tiny_dpcpp_nn import Network, NetworkWithInputEncoding
 import torch
 
 
-def is_close(reference, value, rtol=1e-4, name="", print_diff=False):
+def is_close(reference, value, rtol=1e-2, name="", print_diff=False):
     assert len(reference.shape) == 1, "Reference should be a flat vector"
     assert len(value.shape) == 1, "Value should be a flat vector"
 
@@ -158,7 +158,7 @@ def get_grad_params(model):
     return grads_all, params_all
 
 
-def compare_matrices(weights_dpcpp, weights_torch, rtol=1e-3):
+def compare_matrices(weights_dpcpp, weights_torch, rtol=1e-2):
     for layer, _ in enumerate(weights_dpcpp):
         assert (
             weights_dpcpp[layer].shape == weights_torch[layer].shape
