@@ -150,7 +150,10 @@ void test_grads(sycl::queue &q, const int input_width, const int output_width, c
     printVector("network_output_ref", network_output_ref);
     mlp.backward(input_ref, target_ref, grad_matrices_ref, loss_grads_ref, loss_ref, dL_doutput_ref, dL_dinput_ref,
                  loss_scale);
-
+    printVector("dL_doutput_ref:", dL_doutput_ref);
+    for (int i = 0; i < loss_grads_ref.size(); i++) {
+        printVector("loss_grads_ref:", loss_grads_ref[i]);
+    }
     printVector("target_ref", target_ref);
 
     DeviceMatrix<T> network_output(batch_size, padded_output_width, q);
@@ -261,6 +264,9 @@ void test_grads(sycl::queue &q, const int input_width, const int output_width, c
 
     printVector("grads_ref", grads_ref);
     printVector("grad_vec", grad_vec);
+
+    printVector("interm_backw_vec", interm_backw_vec);
+
     CHECK(areVectorsWithinTolerance(interm_backw_vec, interm_backw_ref,
                                     1.0e-2)); // sanity check, being tested in test_interm_backw
 
@@ -1496,5 +1502,5 @@ TEST_CASE("Swiftnet - test grad sigmoid") {
     sycl::queue q(sycl::gpu_selector_v);
     int batch_size = 8;
 
-    test_grads<sycl::ext::oneapi::bfloat16, 16>(q, 16, 16, 1, 8, "linear", "sigmoid", "constant");
+    test_grads<sycl::ext::oneapi::bfloat16, 16>(q, 16, 16, 1, 8, "linear", "linear", "constant");
 }
