@@ -287,7 +287,9 @@ template <typename T> class MLP {
         for (std::size_t i = 0; i < delta.back().size(); ++i) {
             T error = (layer_outputs.back()[i] - target[i]);
             loss.push_back(error * error / (delta.back().size() * batch_size)); // Squared error for MSE
-            delta.back()[i] = loss_scale * 2 * error / (delta.back().size());   // dLoss/dOutput;
+
+            std::cout << "delta.back().size(): " << std::endl;
+            delta.back()[i] = loss_scale * 2 * error / (delta.back().size()); // dLoss/dOutput;
         }
 
         dL_doutput = delta.back();

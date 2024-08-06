@@ -155,6 +155,7 @@ void test_grads(sycl::queue &q, const int input_width, const int output_width, c
         printVector("loss_grads_ref:", loss_grads_ref[i]);
     }
     printVector("target_ref", target_ref);
+    printVector("loss_ref", loss_ref);
 
     DeviceMatrix<T> network_output(batch_size, padded_output_width, q);
     network_output.fill(0.0f).wait();

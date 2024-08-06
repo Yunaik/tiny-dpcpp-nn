@@ -91,6 +91,7 @@ class _module_function(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, doutput):
+        print(f"doutput: {doutput}")
         input, _, params = ctx.saved_tensors
         loss_scale = ctx.loss_scale
 
@@ -159,11 +160,14 @@ class Module(torch.nn.Module):
         self.input_dtype = input_dtype
         self.backend_param_dtype = backend_param_dtype
         self.store_params_as_full_precision = store_params_as_full_precision
+        # if backend_param_dtype == torch.float16:
+        #     self.loss_scale = 128.0
+        # else:
+        #     self.loss_scale = 1.0
         if backend_param_dtype == torch.float16:
-            self.loss_scale = 128.0
+            self.loss_scale = 1.0
         else:
             self.loss_scale = 1.0
-
         self.tnn_module = self.create_module()
 
         if self.tnn_module.n_params():

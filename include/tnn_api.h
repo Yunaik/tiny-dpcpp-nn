@@ -470,7 +470,6 @@ template <typename T, int WIDTH> class NetworkModule : public Module {
     std::tuple<torch::Tensor, torch::Tensor> backward_pass(torch::Tensor grad_output, bool pack_gradient,
                                                            bool get_dl_dinput) override {
         CHECK_XPU(grad_output);
-
         const int batch_size = grad_output.sizes()[0];
 
         if (grad_output.size(1) != network_.get_output_width()) {
